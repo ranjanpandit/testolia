@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 
 export async function POST(req) {
-  const { studentId, classId, startDate } = await req.json();
+  const { studentId, classId,batchId, startDate } = await req.json();
 
   if (!studentId || !classId) {
     return Response.json({ error: "Missing fields" }, { status: 400 });
@@ -15,9 +15,9 @@ export async function POST(req) {
 
   // 2️⃣ Insert new mapping with start date
   await db.query(
-    `INSERT INTO student_classes (student_id, class_id, start_date)
-     VALUES (?, ?, ?)`,
-    [studentId, classId, startDate || new Date()]
+    `INSERT INTO student_classes (student_id, class_id,batch_id, start_date)
+     VALUES (?, ?,?, ?)`,
+    [studentId, classId,batchId, startDate || new Date()]
   );
 
   return Response.json({ success: true });

@@ -32,11 +32,18 @@ export default function Header() {
       children: [
         { name: "Student Management", href: "/students" },
         { name: "Class Management", href: "/classes" },
-        { name: "Batch Management", href: "/batch" },
+        { name: "Batch Management", href: "/batches" },
         
       ],
     },
-    { name: "Examination", href: "/examination" },
+    {
+      name: "Fee Manager",
+      children: [
+        { name: "Fee Structures", href: "/fees/structures" },
+        
+      ],
+    },
+    { name: "Examination", href: "/exams" },
     { name: "Registration", href: "/registration" },
     { name: "Settings", href: "/settings" },
   ];

@@ -16,10 +16,9 @@ export async function GET(req) {
     query += " AND s.status = ?";
     params.push(status);
   }
-
+  
   query += " ORDER BY s.id DESC LIMIT ? OFFSET ?";
   params.push(Number(limit), (Number(page) - 1) * Number(limit));
-
   const [rows] = await db.query(query, params);
 
   const [[{ total }]] = await db.query(

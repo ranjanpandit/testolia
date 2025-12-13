@@ -9,9 +9,11 @@ import Link from "next/link";
 
 export default function StudentProfile() {
   const { id } = useParams();
+
   const [student, setStudent] = useState(null);
   const [docs, setDocs] = useState([]);
   const [response, setResponse] = useState(null);
+  const [fee, setFee] = useState(null); // ✅ NEW
 
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState({});
@@ -25,10 +27,11 @@ export default function StudentProfile() {
     const data = await res.json();
 
     setStudent(data.student);
-    setDocs(data.documents);
-    setResponse(data.response);
+    setDocs(data.documents || []);
+    setResponse(data.response || null);
+    setFee(data.fee || null); // ✅ NEW
 
-    setForm(data.student); // Pre-fill edit form
+    setForm(data.student);
   };
 
   const handleSave = async () => {
@@ -59,15 +62,21 @@ export default function StudentProfile() {
         </h1>
 
         {!editMode ? (
-          <>
-            <Link href={`/students`}>
-              <Button variant="outline">Back </Button>
+          <div className="flex gap-2">
+            <Link href="/students">
+              <Button variant="outline">Back</Button>
             </Link>
+
             <Link href={`/students/${id}/assign-class`}>
-              <Button variant="outline">🏫 Assign / Change Class</Button>
+              <Button variant="outline">🏫 Assign Class</Button>
             </Link>
+
+            <Link href={`/students/${id}/assign-fee`}>
+              <Button variant="outline">💰 Assign Fees</Button>
+            </Link>
+
             <Button onClick={() => setEditMode(true)}>✏ Edit</Button>
-          </>
+          </div>
         ) : (
           <div className="flex gap-3">
             <Button onClick={handleSave} className="bg-green-600">
@@ -81,38 +90,32 @@ export default function StudentProfile() {
       </div>
 
       {/* PERSONAL DETAILS */}
-      <section className="border p-4 rounded shadow-sm bg-white">
+      <section className="border p-4 rounded bg-white">
         <h2 className="text-lg font-semibold mb-4">Personal Details</h2>
 
         {!editMode ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <p>
-              <strong>Student Code:</strong> {student.student_code}
+              <b>Student Code:</b> {student.student_code}
             </p>
             <p>
-              <strong>First Name:</strong> {student.first_name}
+              <b>Email:</b> {student.email}
             </p>
             <p>
-              <strong>Last Name:</strong> {student.last_name}
+              <b>Phone:</b> {student.phone}
             </p>
             <p>
-              <strong>Email:</strong> {student.email}
+              <b>DOB:</b> {student.dob || "—"}
             </p>
             <p>
-              <strong>Phone:</strong> {student.phone}
+              <b>Gender:</b> {student.gender || "—"}
             </p>
             <p>
-              <strong>DOB:</strong> {student.dob || "—"}
-            </p>
-            <p>
-              <strong>Gender:</strong> {student.gender || "—"}
-            </p>
-            <p>
-              <strong>Class:</strong> {student.class_name || "—"}
+              <b>Class:</b> {student.class_name || "—"}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <Input
               value={form.first_name || ""}
               onChange={(e) => setForm({ ...form, first_name: e.target.value })}
@@ -133,72 +136,43 @@ export default function StudentProfile() {
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
               placeholder="Phone"
             />
-            <Input
-              type="date"
-              value={form.dob || ""}
-              onChange={(e) => setForm({ ...form, dob: e.target.value })}
-            />
-            <select
-              className="border p-2 rounded"
-              value={form.gender || ""}
-              onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            >
-              <option value="">Select Gender</option>
-              <option>Male</option>
-              <option>Female</option>
-              <option>Other</option>
-            </select>
           </div>
         )}
       </section>
 
-      {/* ADDRESS */}
-      <section className="border p-4 rounded shadow-sm bg-white">
-        <h2 className="text-lg font-semibold mb-4">Address</h2>
+      {/* FEES */}
+      <section className="border p-4 rounded bg-white">
+        <h2 className="text-lg font-semibold mb-4">Fees</h2>
 
-        {!editMode ? (
-          <>
-            <p>
-              <strong>Address:</strong> {student.address || "—"}
-            </p>
-            <p>
-              <strong>City:</strong> {student.city || "—"}
-            </p>
-            <p>
-              <strong>State:</strong> {student.state || "—"}
-            </p>
-            <p>
-              <strong>Country:</strong> {student.country || "—"}
-            </p>
-          </>
+        {!fee ? (
+          <p className="text-red-600">Fees not assigned yet.</p>
         ) : (
-          <>
-            <Input
-              value={form.address || ""}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Address"
-            />
-            <Input
-              value={form.city || ""}
-              onChange={(e) => setForm({ ...form, city: e.target.value })}
-              placeholder="City"
-            />
-            <Input
-              value={form.state || ""}
-              onChange={(e) => setForm({ ...form, state: e.target.value })}
-              placeholder="State"
-            />
-            <Input
-              value={form.country || ""}
-              onChange={(e) => setForm({ ...form, country: e.target.value })}
-              placeholder="Country"
-            />
-          </>
+          <div className="grid grid-cols-2 gap-4">
+            <p>
+              <b>Total:</b> ₹{fee.total_amount}
+            </p>
+            <p>
+              <b>Paid:</b> ₹{fee.paid_amount}
+            </p>
+            <p>
+              <b>Due:</b> ₹{fee.total_amount - fee.paid_amount}
+            </p>
+            <p>
+              <b>Status:</b> {fee.status}
+            </p>
+          </div>
         )}
+
+        <Link href={`/students/${id}/pay-fee`}>
+          <Button className="mt-3">💳 Add Payment</Button>
+        </Link>
+        <Link href={`/students/${id}/fee-history `}>
+          <Button variant="outline">Payment history</Button>
+        </Link>
       </section>
 
       {/* DOCUMENTS */}
-      <section className="border p-4 rounded shadow-sm bg-white">
+      <section className="border p-4 rounded bg-white">
         <h2 className="text-lg font-semibold mb-4">Documents</h2>
 
         {docs.length === 0 ? (
@@ -206,10 +180,8 @@ export default function StudentProfile() {
         ) : (
           <ul className="space-y-2">
             {docs.map((d) => (
-              <li key={d.id} className="flex justify-between items-center">
-                <span>
-                  {d.original_name} ({d.type})
-                </span>
+              <li key={d.id} className="flex justify-between">
+                <span>{d.original_name}</span>
                 <a
                   href={d.file_path}
                   target="_blank"
@@ -223,11 +195,10 @@ export default function StudentProfile() {
         )}
       </section>
 
-      {/* APPLICATION RESPONSE */}
+      {/* APPLICATION DATA */}
       {response && (
-        <section className="border p-4 rounded shadow-sm bg-white">
+        <section className="border p-4 rounded bg-white">
           <h2 className="text-lg font-semibold mb-4">Application Form Data</h2>
-
           <pre className="bg-gray-900 text-white p-4 rounded text-sm overflow-auto">
             {JSON.stringify(response.data, null, 2)}
           </pre>

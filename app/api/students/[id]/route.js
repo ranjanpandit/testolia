@@ -4,33 +4,67 @@ export async function GET(req, context) {
   const params = await context.params;
   const { id } = params;
 
-  // Fetch student info
+  // -----------------------------
+  // STUDENT + CLASS
+  // -----------------------------
   const [studentRows] = await db.query(
-    "SELECT s.*, c.name AS class_name from students s LEFT JOIN student_classes sc  ON sc.student_id=s.id AND sc.status='active' LEFT JOIN classes c ON c.id=sc.class_id  WHERE s.id = ?",
+    `
+    SELECT 
+      s.*, 
+      c.name AS class_name
+    FROM students s
+    LEFT JOIN student_classes sc 
+      ON sc.student_id = s.id AND sc.status = 'active'
+    LEFT JOIN classes c 
+      ON c.id = sc.class_id
+    WHERE s.id = ?
+    `,
     [id]
   );
+
   if (studentRows.length === 0) {
     return Response.json({ error: "Student not found" }, { status: 404 });
   }
 
   const student = studentRows[0];
 
-  // Fetch documents
-  const [docs] = await db.query(
+  // -----------------------------
+  // DOCUMENTS
+  // -----------------------------
+  const [documents] = await db.query(
     "SELECT * FROM student_documents WHERE student_id = ?",
     [id]
   );
 
-  // Fetch application response linked to student (Optional)
-  const [response] = await db.query(
-    "SELECT * FROM form_responses WHERE studentId = ? LIMIT 1",
+  // -----------------------------
+  // APPLICATION RESPONSE (optional)
+  // -----------------------------
+  const [responses] = await db.query(
+    "SELECT * FROM form_responses WHERE studentId = ? ORDER BY createdAt DESC LIMIT 1",
+    [id]
+  );
+
+  // -----------------------------
+  // FEES SUMMARY  ✅ NEW
+  // -----------------------------
+  const [fees] = await db.query(
+    `
+    SELECT 
+      total_amount, 
+      paid_amount, 
+      status
+    FROM student_fees
+    WHERE student_id = ?
+    LIMIT 1
+    `,
     [id]
   );
 
   return Response.json({
     student,
-    documents: docs,
-    response: response.length ? response[0] : null,
+    documents,
+    response: responses.length ? responses[0] : null,
+    fee: fees.length ? fees[0] : null, // ✅ IMPORTANT
   });
 }
 
@@ -40,7 +74,8 @@ export async function PUT(req, context) {
   const body = await req.json();
 
   await db.query(
-    `UPDATE students SET 
+    `
+    UPDATE students SET 
       first_name = ?, 
       last_name = ?, 
       email = ?, 
@@ -52,7 +87,8 @@ export async function PUT(req, context) {
       state = ?, 
       country = ?, 
       status = ?
-    WHERE id = ?`,
+    WHERE id = ?
+    `,
     [
       body.first_name,
       body.last_name,
@@ -64,11 +100,10 @@ export async function PUT(req, context) {
       body.city,
       body.state,
       body.country,
-      body.status || "pending",
-      id
+      body.status || "active",
+      id,
     ]
   );
 
   return Response.json({ success: true });
 }
-
