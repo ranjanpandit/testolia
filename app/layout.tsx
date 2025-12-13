@@ -16,8 +16,10 @@ import { useEffect } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { usePathname } from "next/navigation";
+import { PropsWithChildren } from "react";
 
-export default function RootLayout({ children }) {
+
+export default function RootLayout({ children }: PropsWithChildren) {
   const {
     token,
     sidebarOpen,
