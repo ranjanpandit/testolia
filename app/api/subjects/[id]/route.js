@@ -1,7 +1,9 @@
 import { db } from "@/lib/db";
 
 /* PUT: Update Subject */
-export async function PUT(req, { params }) {
+export async function PUT(req,context) {
+  const params = await context.params;
+  const { id } = params;
   const body = await req.json();
 
   await db.query(
@@ -10,7 +12,7 @@ export async function PUT(req, { params }) {
       body.name,
       body.code,
       body.status || "active",
-      params.id
+      id
     ]
   );
 

@@ -43,7 +43,14 @@ export default function Header() {
         
       ],
     },
-    { name: "Examination", href: "/exams" },
+     {
+      name: "Examination",
+      children: [
+        { name: "Exam", href: "/exams" },
+        { name: "Subject", href: "/subjects" },
+        { name: "Exam Patterns", href: "/exam-patterns" },
+      ],
+    },
     { name: "Registration", href: "/registration" },
     { name: "Settings", href: "/settings" },
   ];
