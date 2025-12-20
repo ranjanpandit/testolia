@@ -2,10 +2,13 @@ import { db } from "@/lib/db";
 
 // Common CORS headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*", // or change to your frontend URL
+  "Access-Control-Allow-Origin":
+    "https://testolia-1ybct3gkp-ranjan-kumar-pandits-projects-7bee9bff.vercel.app",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Credentials": "true",
 };
+
 
 // ========================
 // OPTIONS (CORS Preflight)
