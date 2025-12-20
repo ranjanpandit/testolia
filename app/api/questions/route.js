@@ -13,7 +13,7 @@ export async function POST(req) {
       body.type,
       body.difficulty,
       body.marks,
-      body.question,
+      body.question, 
     ]
   );
 
