@@ -1,83 +1,122 @@
 import { db } from "@/lib/db";
 
-// Common CORS headers
-const corsHeaders = {
-  "Access-Control-Allow-Origin":
-    "https://testolia-1ybct3gkp-ranjan-kumar-pandits-projects-7bee9bff.vercel.app",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Credentials": "true",
-};
+// ✅ Allowed frontend origins (add more if needed)
+const ALLOWED_ORIGINS = [
+  "https://testolia-1ybct3gkp-ranjan-kumar-pandits-projects-7bee9bff.vercel.app",
+];
 
+// ✅ Helper to build CORS headers dynamically
+function getCorsHeaders(origin) {
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Credentials": "true",
+    };
+  }
+  return {};
+}
 
-// ========================
-// OPTIONS (CORS Preflight)
-// ========================
-export async function OPTIONS() {
+/* =========================
+   OPTIONS (Preflight)
+========================= */
+export async function OPTIONS(req) {
+  const origin = req.headers.get("origin");
   return new Response(null, {
     status: 204,
-    headers: corsHeaders,
+    headers: getCorsHeaders(origin),
   });
 }
 
-// ========================
-// GET /api/forms/:id
-// ========================
-export async function GET(req, context) {
-  const params = await context.params; 
+/* =========================
+   GET /api/forms/:id
+========================= */
+export async function GET(req, { params }) {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   const { id } = params;
 
-  console.log("API params:", params);
+  try {
+    const [rows] = await db.query(
+      "SELECT * FROM forms WHERE id = ?",
+      [id]
+    );
 
-  const [rows] = await db.query("SELECT * FROM forms WHERE id = ?", [id]);
+    if (rows.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Form not found" }),
+        { status: 404, headers: corsHeaders }
+      );
+    }
 
-  if (rows.length === 0) {
+    return new Response(JSON.stringify(rows[0]), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders,
+      },
+    });
+  } catch (error) {
+    console.error("GET form error:", error);
     return new Response(
-      JSON.stringify({ error: "Form not found" }),
-      { status: 404, headers: corsHeaders }
+      JSON.stringify({ error: "Internal Server Error" }),
+      { status: 500, headers: corsHeaders }
     );
   }
-
-  return new Response(JSON.stringify(rows[0]), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-      ...corsHeaders,
-    },
-  });
 }
 
-// ========================
-// DELETE /api/forms/:id
-// ========================
-export async function DELETE(req, context) {
-  const params = await context.params;
+/* =========================
+   PUT /api/forms/:id
+========================= */
+export async function PUT(req, { params }) {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   const { id } = params;
-
-  await db.query("DELETE FROM forms WHERE id = ?", [id]);
-
-  return new Response(JSON.stringify({ success: true }), {
-    status: 200,
-    headers: corsHeaders,
-  });
-}
-
-// ========================
-// PUT /api/forms/:id
-// ========================
-export async function PUT(req, context) {
-  const params = await context.params;
-  const { id } = params;
-
   const body = await req.json();
 
-  await db.query(
-    "UPDATE forms SET name=?, tabs=?, updatedAt=NOW() WHERE id=?",
-    [body.name, JSON.stringify(body.tabs), id]
-  );
+  try {
+    await db.query(
+      "UPDATE forms SET name=?, tabs=?, updatedAt=NOW() WHERE id=?",
+      [body.name, JSON.stringify(body.tabs), id]
+    );
 
-  return new Response(JSON.stringify({ id, ...body }), {
-    status: 200,
-    headers: corsHeaders,
-  });
+    return new Response(
+      JSON.stringify({ success: true, id }),
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error) {
+    console.error("PUT form error:", error);
+    return new Response(
+      JSON.stringify({ error: "Update failed" }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+}
+
+/* =========================
+   DELETE /api/forms/:id
+========================= */
+export async function DELETE(req, { params }) {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
+  const { id } = params;
+
+  try {
+    await db.query("DELETE FROM forms WHERE id = ?", [id]);
+
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: corsHeaders }
+    );
+  } catch (error) {
+    console.error("DELETE form error:", error);
+    return new Response(
+      JSON.stringify({ error: "Delete failed" }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
 }
