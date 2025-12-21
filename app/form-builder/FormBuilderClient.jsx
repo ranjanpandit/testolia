@@ -158,6 +158,7 @@ export default function FormBuilderClient() {
   // SAVE FORM TO DATABASE
   // -----------------------------------------------------
   const saveFormData = async () => {
+    console.log(fields)
     const finalTabs = tabs.map((tab, index) => ({
       id: tab.title.toLowerCase().replace(/\s+/g, "_"),
       title: tab.title,
