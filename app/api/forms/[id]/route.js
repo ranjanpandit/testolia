@@ -37,10 +37,6 @@ export async function GET(req, { params }) {
   const corsHeaders = getCorsHeaders(origin);
 
   const { id } = params;
-  return new Response(
-        JSON.stringify({ error: "Form not found testing" }),
-        { status: 404, headers: corsHeaders }
-      );
 
   try {
     const [rows] = await db.query(
