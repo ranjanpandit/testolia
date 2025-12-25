@@ -4,8 +4,8 @@ export async function POST(req) {
   const body = await req.json();
 
   const [result] = await db.query(
-    "INSERT INTO forms (name, tabs) VALUES (?, ?)",
-    [body.name, JSON.stringify(body.tabs)]
+    "INSERT INTO forms (name,theme, tabs) VALUES (?,?, ?)",
+    [body.name,body.themeKey, JSON.stringify(body.tabs)]
   );
 
   return Response.json({ id: result.insertId, ...body });

@@ -80,20 +80,11 @@ export default function FormsList() {
                 <Link href={`/form-builder?id=${f.id}`}>
                   <Button variant="outline">✏ Edit</Button>
                 </Link>
+                <Link href={`/form-preview/${(f.id)}`}>
+                  <Button>👀 Preview</Button>
+                </Link>
 
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    navigator.clipboard.writeText(JSON.stringify(f, null, 2))
-                  }
-                >
-                  📤 Export
-                </Button>
-
-                <Button
-                  variant="destructive"
-                  onClick={() => remove(f.id)}
-                >
+                <Button variant="destructive" onClick={() => remove(f.id)}>
                   🗑 Delete
                 </Button>
               </div>

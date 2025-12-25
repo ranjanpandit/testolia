@@ -1,7 +1,15 @@
 import { db } from "@/lib/db";
-import { writeFile } from "fs/promises";
-import path from "path";
 import { v4 as uuid } from "uuid";
+import { v2 as cloudinary } from "cloudinary";
+
+/* ----------------------------------------
+   CLOUDINARY CONFIG (SERVER ONLY)
+---------------------------------------- */
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 /* ----------------------------------------
    CORS CONFIG
@@ -25,7 +33,29 @@ function getCorsHeaders(origin) {
 }
 
 /* ----------------------------------------
-   OPTIONS (Preflight) – REQUIRED
+   CLOUDINARY UPLOAD HELPER
+---------------------------------------- */
+async function uploadToCloudinary(file) {
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      {
+        folder: "testolia_uploads",
+        resource_type: "auto", // images + pdf + docs
+        public_id: uuid(),
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    ).end(buffer);
+  });
+}
+
+/* ----------------------------------------
+   OPTIONS (Preflight)
 ---------------------------------------- */
 export async function OPTIONS(req) {
   const origin = req.headers.get("origin");
@@ -49,48 +79,45 @@ export async function POST(req) {
     const studentId = formData.get("studentId");
 
     const data = {};
-    const uploadsDir = path.join(process.cwd(), "public/uploads");
+    const fieldOrder = []; // ✅ order preserved here
 
     for (const [key, value] of formData.entries()) {
+      if (key === "formId" || key === "studentId") continue;
+
+      fieldOrder.push(key); // ✅ capture order
+
       if (value instanceof File) {
-        const bytes = await value.arrayBuffer();
-        const buffer = Buffer.from(bytes);
-
-        const ext = value.name.split(".").pop();
-        const fileName = `${uuid()}.${ext}`;
-        const filePath = path.join(uploadsDir, fileName);
-
-        await writeFile(filePath, buffer);
-        data[key] = `/uploads/${fileName}`;
-      } else if (key !== "formId" && key !== "studentId") {
+        const url = await uploadToCloudinary(value);
+        data[key] = url;
+      } else {
         data[key] = value;
       }
     }
 
     await db.query(
-      "INSERT INTO form_responses (formId, studentId, data) VALUES (?, ?, ?)",
-      [formId, studentId || null, JSON.stringify(data)]
+      "INSERT INTO form_responses (formId, studentId, data, field_order) VALUES (?, ?, ?, ?)",
+      [
+        formId,
+        studentId || null,
+        JSON.stringify(data),
+        JSON.stringify(fieldOrder),
+      ]
     );
 
     return new Response(
       JSON.stringify({ success: true }),
-      {
-        status: 200,
-        headers: corsHeaders,
-      }
+      { status: 200, headers: corsHeaders }
     );
   } catch (err) {
     console.error("POST ERROR:", err);
 
     return new Response(
       JSON.stringify({ error: err.message }),
-      {
-        status: 500,
-        headers: corsHeaders,
-      }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
+
 
 /* ----------------------------------------
    GET – LIST FORM RESPONSES

@@ -21,9 +21,9 @@ export default function Header() {
     {
       name: "Form Manager",
       children: [
-        { name: "Forms Submission", href: "/form-responses" },
-        { name: "Forms List", href: "/forms" },
+        { name: "Forms", href: "/forms" },
         { name: "Create Form", href: "/form-builder" },
+        { name: "Forms Responses", href: "/form-responses" },
         
       ],
     },

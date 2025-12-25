@@ -50,7 +50,7 @@ export default function AddBatchPage() {
     });
 
     setLoading(false);
-    router.push("/batches");
+    router.push("/forms");
   };
 
   return (

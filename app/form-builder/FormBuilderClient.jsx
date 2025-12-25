@@ -13,9 +13,11 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import FieldSettings from "@/components/builder/FieldSettings";
 import { toast } from "sonner";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams,useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
+import { FORM_THEMES } from "@/lib/formThemes";
+
 
 
 const ICONS = [
@@ -45,6 +47,9 @@ export default function FormBuilderClient() {
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("id");
+  const [themeKey, setThemeKey] = useState("default");
+  const router = useRouter()
+
 
   // -----------------------------------------------------
   // LOAD EXISTING FORM FOR EDIT
@@ -60,6 +65,8 @@ export default function FormBuilderClient() {
 
       setFormName(existing.name);
       setFormId(existing.id);
+      setThemeKey(existing.theme || "default");
+
 
       setTabs(existing.tabs.map((t) => ({
         title: t.title,
@@ -183,7 +190,8 @@ export default function FormBuilderClient() {
     const form = {
       id: formId,
       name: formName,
-      tabs: finalTabs,
+      themeKey, // ✅ only key
+      tabs: finalTabs,    
     };
 
     const url = formId ? `/api/forms/${formId}` : "/api/forms";
@@ -199,6 +207,7 @@ export default function FormBuilderClient() {
     setFormId(data.id);
 
     toast.success("Form saved!");
+      router.push("/batches");
   };
 
   const fieldsInTab = fields.filter((f) => f.tab === activeTab);
@@ -217,8 +226,29 @@ export default function FormBuilderClient() {
             </Button>
           ))}
         </CardContent>
-      </Card>
+       <div className="mt-6">
+  <h3 className="font-semibold mb-2">Form Theme</h3>
 
+  <div className="grid grid-cols-2 gap-2">
+    {Object.keys(FORM_THEMES).map((key) => (
+      <button
+        key={key}
+        onClick={() => setThemeKey(key)}
+        className={`p-3 rounded border text-sm ${
+          themeKey === key
+            ? "border-blue-500 ring-2 ring-blue-400"
+            : "border-gray-300"
+        }`}
+      >
+        {key.toUpperCase()}
+      </button>
+    ))}
+  </div>
+</div>
+
+
+      </Card>
+      
       {/* MAIN BUILDER */}
       <Card className="md:col-span-2 p-6">
         <CardHeader><CardTitle>Form Layout</CardTitle></CardHeader>

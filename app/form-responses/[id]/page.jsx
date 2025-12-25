@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 export default function SingleResponsePage() {
@@ -45,6 +44,11 @@ export default function SingleResponsePage() {
 
   if (!response) return <p className="p-6">Loading...</p>;
 
+  // ✅ use field_order if available, fallback to object keys
+  const orderedKeys = Array.isArray(response.field_order)
+    ? response.field_order
+    : Object.keys(response.data || {});
+
   return (
     <div className="max-w-3xl mx-auto p-6">
       {/* Header */}
@@ -73,11 +77,14 @@ export default function SingleResponsePage() {
         </div>
       </div>
 
-      {/* Response Data */}
+      {/* Response Data (ORDERED) */}
       <div className="space-y-4">
-        { Object.entries(response.data || {}).map(([key, value]) => {
+        {orderedKeys.map((key) => {
+          const value = response.data?.[key];
+
           const isFile =
-            typeof value === "string" && value.startsWith("/uploads/");
+            typeof value === "string" &&
+            value.startsWith("https://res.cloudinary.com/");
           const isImage =
             isFile && /\.(jpg|jpeg|png|gif|webp)$/i.test(value);
 
@@ -86,7 +93,7 @@ export default function SingleResponsePage() {
               key={key}
               className="p-3 border rounded flex items-center justify-between gap-4"
             >
-              <strong className="capitalize">{key}</strong>
+              <strong className="capitalize">{key.replace(/_/g, " ")}</strong>
 
               <div className="text-right">
                 {isImage ? (
