@@ -8,162 +8,227 @@ import { Textarea } from "@/components/ui/textarea";
 import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 
+/* ----------------------------------------
+   DEFAULT THEME (MATCH STUDENT FORM)
+---------------------------------------- */
+const DEFAULT_THEME = {
+  background: "#0f172a",
+  card: "#1e293b",
+  primary: "#2563eb",
+  button: "#2563eb",
+  text: "#ffffff",
+};
+
 export default function GeneratedForm({ schema }) {
   const [activeTab, setActiveTab] = useState(0);
   const [values, setValues] = useState({});
+  const [errors, setErrors] = useState({});
 
   if (!schema || !schema.tabs) {
     return <p className="p-6">⏳ Preparing preview...</p>;
   }
 
-  const handleChange = (name, value) => {
-    setValues((prev) => ({ ...prev, [name]: value }));
+  /* ----------------------------------------
+     THEME (FROM SCHEMA OR DEFAULT)
+  ---------------------------------------- */
+  const theme = {
+    background: schema.theme?.background || DEFAULT_THEME.background,
+    card: schema.theme?.card || DEFAULT_THEME.card,
+    primary: schema.theme?.primary || DEFAULT_THEME.primary,
+    button: schema.theme?.button || DEFAULT_THEME.button,
+    text: schema.theme?.text || DEFAULT_THEME.text,
   };
 
-  // ------------------------ VALIDATION ------------------------
+  /* ----------------------------------------
+     CHANGE HANDLER
+  ---------------------------------------- */
+  const handleChange = (name, value) => {
+    setValues((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  /* ----------------------------------------
+     VALIDATE TAB BY INDEX
+  ---------------------------------------- */
+  const validateTabByIndex = (index) => {
+    const fields = schema.tabs[index]?.fields || [];
+    const newErrors = {};
+
+    fields.forEach((field) => {
+      const value = values[field.name];
+
+      if (field.required && !value) {
+        newErrors[field.name] = `${field.label} is required`;
+      }
+
+      if (field.pattern && value) {
+        const regex = new RegExp(field.pattern);
+        if (!regex.test(value)) {
+          newErrors[field.name] =
+            field.patternMessage || `${field.label} is invalid`;
+        }
+      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...newErrors }));
+      return false;
+    }
+
+    return true;
+  };
+
+  /* ----------------------------------------
+     TAB CLICK (NO SKIP AHEAD)
+  ---------------------------------------- */
+  const handleTabClick = (idx) => {
+    if (idx <= activeTab) {
+      setActiveTab(idx);
+      return;
+    }
+
+    for (let i = 0; i < idx; i++) {
+      if (!validateTabByIndex(i)) {
+        toast.error("Please complete previous section first");
+        return;
+      }
+    }
+
+    setActiveTab(idx);
+  };
+
+  /* ----------------------------------------
+     SUBMIT (PREVIEW ONLY)
+  ---------------------------------------- */
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    let missing = [];
-    let invalid = [];
-
-    schema.tabs.forEach((tab) => {
-      tab.fields.forEach((field) => {
-        const value = values[field.name];
-
-        if (field.required && !value) {
-          missing.push(field.label);
-        }
-
-        if (field.pattern && value) {
-          const regex = new RegExp(field.pattern);
-          if (!regex.test(value)) {
-            invalid.push(field.label);
-          }
-        }
-      });
-    });
-
-    if (missing.length > 0) {
-      toast.error(`Required fields missing: ${missing.join(", ")}`);
-      return;
+    for (let i = 0; i < schema.tabs.length; i++) {
+      if (!validateTabByIndex(i)) {
+        setActiveTab(i);
+        toast.error("Form has validation errors");
+        return;
+      }
     }
 
-    if (invalid.length > 0) {
-      toast.error(`Invalid values: ${invalid.join(", ")}`);
-      return;
-    }
-
-    console.log("Submitted:", values);
-    toast.success("Form submitted successfully!");
+    toast.success("Preview validation successful!");
+    console.log("Preview values:", values);
   };
 
-  // ------------------------ FIELD RENDER ------------------------
+  /* ----------------------------------------
+     FIELD RENDER
+  ---------------------------------------- */
   const renderField = (field) => {
-    const commonProps = {
-      name: field.name,
-      required: field.required || false,
-      value: values[field.name] || "",
-      onChange: (e) => handleChange(field.name, e.target.value),
-    };
+    const value = values[field.name] || "";
+    const error = errors[field.name];
 
-    switch (field.type) {
-      case "textarea":
-        return <Textarea {...commonProps} rows="3" />;
+    return (
+      <div key={field.name} className="mb-5">
+        <Label className="text-sm font-medium text-[var(--text)]">
+          {field.label}
+          {field.required && <span className="text-red-500 ml-1">*</span>}
+        </Label>
 
-      case "select":
-        return (
-          <select {...commonProps} className="border rounded p-2 w-full dark:bg-gray-800">
-            <option value="">Select...</option>
-            {field.options?.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
-              </option>
-            ))}
-          </select>
-        );
+        <div
+          className="
+            mt-2 flex items-center gap-3
+            rounded-xl px-4 py-3
+            bg-white/5 border border-white/20
+            focus-within:border-[var(--primary)]
+            focus-within:ring-1 focus-within:ring-[var(--primary)]
+          "
+        >
+          {field.type === "textarea" ? (
+            <Textarea
+              rows={3}
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              className="bg-transparent border-none outline-none text-sm text-[var(--text)] resize-none"
+            />
+          ) : field.type === "select" ? (
+            <select
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              className="bg-transparent text-sm text-[var(--text)] w-full outline-none"
+            >
+              <option value="">Select...</option>
+              {field.options?.map((opt) => (
+                <option key={opt} value={opt} className="text-black">
+                  {opt}
+                </option>
+              ))}
+            </select>
+          ) : field.type === "file" ? (
+            <input
+              type="file"
+              accept={field.accept || "*"}
+              onChange={(e) =>
+                handleChange(field.name, e.target.files?.[0])
+              }
+              className="text-sm text-[var(--text)]"
+            />
+          ) : (
+            <Input
+              type={field.type}
+              value={value}
+              onChange={(e) => handleChange(field.name, e.target.value)}
+              className="bg-transparent border-none outline-none text-sm text-[var(--text)]"
+            />
+          )}
+        </div>
 
-      case "radio":
-        return (
-          <div className="space-y-1">
-            {field.options?.map((opt) => (
-              <label key={opt} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name={field.name}
-                  value={opt}
-                  checked={values[field.name] === opt}
-                  onChange={() => handleChange(field.name, opt)}
-                />
-                {opt}
-              </label>
-            ))}
-          </div>
-        );
-
-      case "file":
-        return (
-          <input
-            type="file"
-            accept={field.accept || "*"}
-            onChange={(e) => handleChange(field.name, e.target.files[0])}
-          />
-        );
-
-      default:
-        return (
-          <Input
-            {...commonProps}
-            type={field.type}
-            pattern={field.pattern || undefined}
-            title={field.patternMessage || ""}
-            min={field.min}
-            max={field.max}
-          />
-        );
-    }
+        {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+      </div>
+    );
   };
 
+  /* ----------------------------------------
+     UI
+  ---------------------------------------- */
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <main
+      style={{
+        "--bg": theme.background,
+        "--card": theme.card,
+        "--primary": theme.primary,
+        "--button": theme.button,
+        "--text": theme.text,
+      }}
+      className="min-h-screen p-6 bg-[var(--bg)] text-[var(--text)]"
+    >
+      <div className="max-w-4xl mx-auto p-8 rounded-2xl bg-[var(--card)] shadow-xl">
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b pb-2">
-        {schema.tabs.map((tab, idx) => (
+        {/* Tabs */}
+        <div className="flex gap-3 mb-8 flex-wrap">
+          {schema.tabs.map((tab, idx) => (
+            <Button
+              key={idx}
+              type="button"
+              onClick={() => handleTabClick(idx)}
+              className={`flex items-center gap-2 transition
+                ${
+                  idx === activeTab
+                    ? "bg-[var(--primary)] text-white"
+                    : "bg-white/10 text-white/80 hover:bg-white/20"
+                }`}
+            >
+              {tab.icon && <Icon icon={tab.icon} />}
+              {tab.title}
+            </Button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {schema.tabs[activeTab].fields.map(renderField)}
+
           <Button
-            key={tab.id}
-            type="button"
-            variant={idx === activeTab ? "default" : "outline"}
-            onClick={() => setActiveTab(idx)}
-            className="flex items-center gap-2"
+            type="submit"
+            className="mt-8 w-full bg-[var(--button)] hover:brightness-110"
           >
-            {tab.icon && <Icon icon={tab.icon} width={18} />}
-            {tab.title}
+            Validate Preview
           </Button>
-        ))}
+        </form>
       </div>
-
-      {/* Fields */}
-      <div className="space-y-4">
-        {schema.tabs[activeTab].fields.map((field) => (
-          <div key={field.name} className="space-y-1">
-            <Label>
-              {field.label}{" "}
-              {field.required && <span className="text-red-600">*</span>}
-            </Label>
-
-            {renderField(field)}
-
-            {field.patternMessage && (
-              <p className="text-xs text-gray-500">{field.patternMessage}</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <Button type="submit" className="mt-6 w-full">
-        Submit
-      </Button>
-    </form>
+    </main>
   );
 }
