@@ -17,7 +17,7 @@ cloudinary.config({
 const ALLOWED_ORIGINS = [
   "http://localhost:3001",
   "https://testolia-1ybct3gkp-ranjan-kumar-pandits-projects-7bee9bff.vercel.app",
-  "https://college-admission-form-s1n2-8gy5ap9o0.vercel.app",
+  "https://application-form-ivory.vercel.app",
   "https://college-admission-form-s1n2.vercel.app",
 ];
 
