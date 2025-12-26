@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect  } from "react";
+import { useState, useEffect } from "react";
 import { ELEMENTS } from "@/lib/formElements";
 import { DndContext, closestCenter } from "@dnd-kit/core";
 import {
@@ -13,12 +13,10 @@ import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import FieldSettings from "@/components/builder/FieldSettings";
 import { toast } from "sonner";
-import { useSearchParams,useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { FORM_THEMES } from "@/lib/formThemes";
-
-
 
 const ICONS = [
   "mdi:account",
@@ -33,7 +31,7 @@ const ICONS = [
 
 export default function FormBuilderClient() {
   const [tabs, setTabs] = useState([
-    { title: "Untitled Tab", icon: "mdi:form-textbox" }
+    { title: "Untitled Tab", icon: "mdi:form-textbox" },
   ]);
 
   const [activeTab, setActiveTab] = useState(0);
@@ -47,8 +45,17 @@ export default function FormBuilderClient() {
 
   const searchParams = useSearchParams();
   const editId = searchParams.get("id");
-  const [themeKey, setThemeKey] = useState("default");
-  const router = useRouter()
+  const router = useRouter();
+  // OLD DEFAULT (matches your earlier Tailwind look)
+  const DEFAULT_THEME = {
+    background: "#0f172a",
+    card: "#1e293b",
+    primary: "#2563eb",
+    button: "#2563eb",
+    text: "#ffffff",
+  };
+
+  const [theme, setTheme] = useState(DEFAULT_THEME);
 
 
   // -----------------------------------------------------
@@ -65,13 +72,22 @@ export default function FormBuilderClient() {
 
       setFormName(existing.name);
       setFormId(existing.id);
-      setThemeKey(existing.theme || "default");
+      if(existing.theme){
+        setTheme({
+          background: existing.theme.background ?? DEFAULT_THEME.background,
+          card: existing.theme.card ?? DEFAULT_THEME.card,
+          primary: existing.theme.primary ?? DEFAULT_THEME.primary,
+          button: existing.theme.button ?? DEFAULT_THEME.button,
+          text: existing.theme.text ?? DEFAULT_THEME.text,
+        });
+      }
 
-
-      setTabs(existing.tabs.map((t) => ({
-        title: t.title,
-        icon: t.icon || "mdi:form-textbox"
-      })));
+      setTabs(
+        existing.tabs.map((t) => ({
+          title: t.title,
+          icon: t.icon || "mdi:form-textbox",
+        }))
+      );
 
       const rebuilt = existing.tabs.flatMap((tab, tabIndex) =>
         tab.fields.map((field) => ({
@@ -165,7 +181,7 @@ export default function FormBuilderClient() {
   // SAVE FORM TO DATABASE
   // -----------------------------------------------------
   const saveFormData = async () => {
-    console.log(fields)
+    console.log(fields);
     const finalTabs = tabs.map((tab, index) => ({
       id: tab.title.toLowerCase().replace(/\s+/g, "_"),
       title: tab.title,
@@ -190,8 +206,8 @@ export default function FormBuilderClient() {
     const form = {
       id: formId,
       name: formName,
-      themeKey, // ✅ only key
-      tabs: finalTabs,    
+      theme, // ✅ only key
+      tabs: finalTabs,
     };
 
     const url = formId ? `/api/forms/${formId}` : "/api/forms";
@@ -207,51 +223,73 @@ export default function FormBuilderClient() {
     setFormId(data.id);
 
     toast.success("Form saved!");
-      router.push("/batches");
+    router.push("/forms");
   };
 
   const fieldsInTab = fields.filter((f) => f.tab === activeTab);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
       {/* LEFT SIDEBAR */}
       <Card className="p-4 h-fit">
-        <CardHeader><CardTitle>Form Controls</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Form Controls</CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
           {ELEMENTS.map((el) => (
-            <Button key={el.type} variant="outline" className="w-full"
-              onClick={() => addField(el.type)}>
+            <Button
+              key={el.type}
+              variant="outline"
+              className="w-full"
+              onClick={() => addField(el.type)}
+            >
               ➕ {el.label}
             </Button>
           ))}
         </CardContent>
-       <div className="mt-6">
-  <h3 className="font-semibold mb-2">Form Theme</h3>
+        <div className="mt-6">
+  <div className="flex items-center justify-between mb-3">
+    <h3 className="font-semibold">Custom Theme</h3>
 
-  <div className="grid grid-cols-2 gap-2">
-    {Object.keys(FORM_THEMES).map((key) => (
-      <button
-        key={key}
-        onClick={() => setThemeKey(key)}
-        className={`p-3 rounded border text-sm ${
-          themeKey === key
-            ? "border-blue-500 ring-2 ring-blue-400"
-            : "border-gray-300"
-        }`}
-      >
-        {key.toUpperCase()}
-      </button>
-    ))}
+    {/* 🔁 RESET BUTTON */}
+    <button
+      type="button"
+      onClick={() => setTheme(DEFAULT_THEME)}
+      className="text-xs px-3 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-900"
+    >
+      Reset
+    </button>
   </div>
+
+  {Object.entries(theme).map(([key, value]) => (
+    <div
+      key={key}
+      className="flex items-center justify-between mb-2"
+    >
+      <label className="capitalize text-sm">{key}</label>
+
+      <input
+        type="color"
+        value={value}
+        onChange={(e) =>
+          setTheme((prev) => ({
+            ...prev,
+            [key]: e.target.value,
+          }))
+        }
+        className="w-10 h-8 border rounded"
+      />
+    </div>
+  ))}
 </div>
 
-
       </Card>
-      
+
       {/* MAIN BUILDER */}
       <Card className="md:col-span-2 p-6">
-        <CardHeader><CardTitle>Form Layout</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Form Layout</CardTitle>
+        </CardHeader>
 
         <input
           className="border p-2 rounded w-full text-xl font-semibold mb-4"
@@ -263,7 +301,6 @@ export default function FormBuilderClient() {
         <div className="flex gap-2 flex-wrap mb-4">
           {tabs.map((tab, i) => (
             <div key={i} className="flex items-center gap-1">
-              
               {editingTab === i ? (
                 <input
                   autoFocus
@@ -302,14 +339,19 @@ export default function FormBuilderClient() {
           <Button
             variant="secondary"
             onClick={() =>
-              setTabs([...tabs, { title: `Tab ${tabs.length + 1}`, icon: "mdi:form-textbox" }])
+              setTabs([
+                ...tabs,
+                { title: `Tab ${tabs.length + 1}`, icon: "mdi:form-textbox" },
+              ])
             }
           >
             + Tab
           </Button>
 
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" onClick={saveFormData}>💾 Save</Button>
+            <Button variant="outline" onClick={saveFormData}>
+              💾 Save
+            </Button>
             {formId && (
               <Link href={`/form-preview/${formId}`}>
                 <Button>👀 Preview</Button>
@@ -340,7 +382,11 @@ export default function FormBuilderClient() {
               ))}
             </div>
 
-            <Button variant="outline" className="w-full" onClick={() => setEditingIcon(null)}>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setEditingIcon(null)}
+            >
               Close
             </Button>
           </div>
@@ -353,8 +399,14 @@ export default function FormBuilderClient() {
               Add fields to this tab
             </p>
           ) : (
-            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={fieldsInTab} strategy={verticalListSortingStrategy}>
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={fieldsInTab}
+                strategy={verticalListSortingStrategy}
+              >
                 <div className="space-y-4">
                   {fieldsInTab.map((field) => (
                     <div key={field.id} onClick={() => setSelectedField(field)}>
@@ -376,7 +428,6 @@ export default function FormBuilderClient() {
           deleteField={deleteField}
         />
       </Card>
-
     </div>
   );
 }

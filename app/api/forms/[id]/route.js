@@ -70,7 +70,7 @@ export async function PUT(req, context) {
 
   await db.query(
     "UPDATE forms SET name=?,theme=?, tabs=?, updatedAt=NOW() WHERE id=?",
-    [body.name,body.themeKey,  JSON.stringify(body.tabs), id]
+    [body.name,JSON.stringify(body.theme),  JSON.stringify(body.tabs), id]
   );
 
   return new Response(
