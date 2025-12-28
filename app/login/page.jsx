@@ -12,19 +12,27 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const { login } = useStore();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (email === "admin@test.com" && password === "123456") {
-      const fakeToken =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-        btoa(JSON.stringify({ id: 1, email, role: "admin" })) + // <-- pick role here
-        ".signature-placeholder";
 
-      login(fakeToken);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // Save token
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
       toast.success("Login successful");
-      setTimeout(() => (window.location.href = "/"), 500);
-    } else {
-      toast.error("Invalid credentials");
+      window.location.href = "/";
+    } catch (err) {
+      toast.error(err.message || "Login failed");
     }
   };
 

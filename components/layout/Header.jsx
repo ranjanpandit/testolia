@@ -2,61 +2,113 @@
 
 import { Search, Bell, Moon, Sun, User, LogOut, Menu } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { usePermissionStore } from "@/lib/permissionStore";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export default function Header() {
-  const { darkMode, toggleTheme, logout, toggleMobileSidebar } = useStore();
+  const { darkMode, toggleTheme, logout } = useStore();
+  const { has, loaded } = usePermissionStore();
+
   const [openProfile, setOpenProfile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
+
   const pathname = usePathname();
 
+  /* ----------------------------------------
+     CLOSE ALL MENUS
+  ---------------------------------------- */
+  const closeMenus = () => {
+    setOpenMenu(null);
+    setMobileMenuOpen(false);
+    setOpenProfile(false);
+  };
+
+  /* ----------------------------------------
+     CLOSE MENUS ON ROUTE CHANGE
+  ---------------------------------------- */
+  useEffect(() => {
+    closeMenus();
+  }, [pathname]);
+
+  if (!loaded) return null; // ⛔ wait till permissions loaded
+
+  /* ----------------------------------------
+     MENU CONFIG
+  ---------------------------------------- */
   const menuLinks = [
-    { name: "Dashboard", href: "/" },
+    { name: "Dashboard", href: "/", permission: "dashboard.view" },
 
     {
       name: "Form Manager",
+      permission: "form.view",
       children: [
-        { name: "Forms", href: "/forms" },
-        { name: "Create Form", href: "/form-builder" },
-        { name: "Forms Responses", href: "/form-responses" },
-        
+        { name: "Forms", href: "/forms", permission: "form.view" },
+        { name: "Forms Responses", href: "/form-responses", permission: "form.view" },
       ],
     },
+
     {
       name: "Students",
+      permission: "student.view",
       children: [
-        { name: "Student Management", href: "/students" },
-        { name: "Class Management", href: "/classes" },
-        { name: "Batch Management", href: "/batches" },
-        
+        { name: "Student Management", href: "/students", permission: "student.manage" },
+        { name: "Class Management", href: "/classes", permission: "class.manage" },
+        { name: "Batch Management", href: "/batches", permission: "batch.manage" },
       ],
     },
+
     {
       name: "Fee Manager",
+      permission: "fee.manage",
       children: [
-        { name: "Fee Structures", href: "/fees/structures" },
-        
+        { name: "Fee Structures", href: "/fees/structures", permission: "fee.manage" },
       ],
     },
-     {
+
+    {
       name: "Examination",
+      permission: "exam.manage",
       children: [
-        { name: "Exam", href: "/exams" },
-        { name: "Subject", href: "/subjects" },
-        { name: "Exam Patterns", href: "/exam-patterns" },
+        { name: "Exam", href: "/exams", permission: "exam.manage" },
+        { name: "Subject", href: "/subjects", permission: "subject.manage" },
+        { name: "Exam Patterns", href: "/exam-patterns", permission: "exam.manage" },
       ],
     },
-    { name: "Registration", href: "/registration" },
-    { name: "Settings", href: "/settings" },
+
+    {
+      name: "Admin",
+      permission: "user.manage",
+      children: [
+        { name: "Users", href: "/admin/users", permission: "user.manage" },
+        { name: "Roles & Permissions", href: "/admin/roles", permission: "role.manage" },
+      ],
+    },
   ];
 
+  /* ----------------------------------------
+     FILTER BY PERMISSIONS
+  ---------------------------------------- */
+  const visibleMenus = menuLinks
+    .filter(menu => !menu.permission || has(menu.permission))
+    .map(menu => ({
+      ...menu,
+      children: menu.children
+        ? menu.children.filter(
+            child => !child.permission || has(child.permission)
+          )
+        : undefined,
+    }))
+    .filter(menu => !menu.children || menu.children.length > 0);
+
+  /* ----------------------------------------
+     UI
+  ---------------------------------------- */
   return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b p-3 flex justify-between items-center shadow-sm transition">
+    <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b p-3 flex justify-between items-center shadow-sm">
       {/* MOBILE MENU */}
       <div className="md:hidden">
         <button
@@ -67,32 +119,31 @@ export default function Header() {
         </button>
 
         {mobileMenuOpen && (
-          <div className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-800 shadow-lg rounded-md border p-2 z-30">
-            {menuLinks.map((link, idx) => (
+          <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-gray-800 shadow-lg rounded-md border p-2 z-30">
+            {visibleMenus.map((link, idx) => (
               <div key={idx}>
                 {!link.children ? (
                   <Link
                     href={link.href}
-                    className="block px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                    onClick={closeMenus}
+                    className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     {link.name}
                   </Link>
                 ) : (
-                  <div>
-                    <p className="px-3 py-2 font-semibold text-gray-600 dark:text-gray-300">
-                      {link.name}
-                    </p>
-
-                    {link.children.map((child) => (
+                  <>
+                    <p className="px-3 py-2 font-semibold">{link.name}</p>
+                    {link.children.map(child => (
                       <Link
                         key={child.href}
                         href={child.href}
-                        className="block pl-6 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                        onClick={closeMenus}
+                        className="block pl-6 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
                         {child.name}
                       </Link>
                     ))}
-                  </div>
+                  </>
                 )}
               </div>
             ))}
@@ -100,69 +151,47 @@ export default function Header() {
         )}
       </div>
 
-      <button onClick={toggleMobileSidebar} className="md:hidden px-2">
-        <Menu />
-      </button>
+      {/* DESKTOP MENU */}
+      <nav className="hidden md:flex gap-6 text-sm font-medium">
+        {visibleMenus.map((link, index) =>
+          link.children ? (
+            <div key={index} className="relative">
+              <button
+                onClick={() => setOpenMenu(openMenu === index ? null : index)}
+                className="hover:text-blue-600"
+              >
+                {link.name} ▾
+              </button>
 
-      {/* Navigation Menu */}
-      <nav className="hidden md:flex gap-6 text-sm font-medium relative">
-        {menuLinks.map((link, index) => {
-          const isActive = pathname === link.href;
-
-          // If menu has sub-items
-          if (link.children) {
-            return (
-              <div key={index} className="relative">
-                <button
-                  onClick={() => setOpenMenu(openMenu === index ? null : index)}
-                  className={`hover:text-blue-600 transition flex items-center gap-1 ${
-                    link.children.some((c) => c.href === pathname)
-                      ? "text-blue-600 font-semibold underline underline-offset-4"
-                      : ""
-                  }`}
-                >
-                  {link.name} ▾
-                </button>
-
-                {openMenu === index && (
-                  <div className="absolute left-0 mt-2 w-48 bg-white dark:bg-gray-800 shadow-lg rounded-md border p-2 z-20">
-                    {link.children.map((child) => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        onClick={() => setOpenMenu(null)} // <-- AUTO CLOSE
-                        className={`block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                          pathname === child.href
-                            ? "font-bold text-blue-600"
-                            : ""
-                        }`}
-                      >
-                        {child.name}
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // Regular Menu Item
-          return (
+              {openMenu === index && (
+                <div className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-800 shadow rounded border p-2">
+                  {link.children.map(child => (
+                    <Link
+                      key={child.href}
+                      href={child.href}
+                      onClick={closeMenus}
+                      className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      {child.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
             <Link
               key={link.href}
               href={link.href}
-              className={`hover:text-blue-600 transition ${
-                isActive
-                  ? "text-blue-600 font-semibold underline underline-offset-4"
-                  : ""
-              }`}
+              onClick={closeMenus}
+              className="hover:text-blue-600"
             >
               {link.name}
             </Link>
-          );
-        })}
+          )
+        )}
       </nav>
 
+      {/* SEARCH */}
       <div className="hidden md:flex items-center bg-gray-100 dark:bg-gray-700 px-3 rounded-lg w-80">
         <Search size={18} className="opacity-60" />
         <Input
@@ -172,25 +201,16 @@ export default function Header() {
         />
       </div>
 
-      {/* Right Section */}
+      {/* RIGHT SECTION */}
       <div className="flex items-center gap-5">
-        {/* Notification Bell */}
         <button className="relative hover:text-blue-500 transition">
           <Bell size={20} />
-          <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs px-1 rounded-full">
-            3
-          </span>
         </button>
 
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="hover:text-blue-500 transition"
-        >
+        <button onClick={toggleTheme} className="hover:text-blue-500 transition">
           {darkMode ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
-        {/* Profile Dropdown */}
         <div className="relative">
           <button
             onClick={() => setOpenProfile(!openProfile)}
@@ -205,12 +225,14 @@ export default function Header() {
             <div className="absolute right-0 mt-3 w-40 bg-white dark:bg-gray-700 shadow-md rounded-lg border p-2">
               <Link
                 href="/profile"
+                onClick={closeMenus}
                 className="block px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md"
               >
                 Profile
               </Link>
               <Link
                 href="/settings"
+                onClick={closeMenus}
                 className="block px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md"
               >
                 Settings

@@ -17,6 +17,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Icon } from "@iconify/react";
 import { FORM_THEMES } from "@/lib/formThemes";
+import PermissionGuard from "@/components/auth/PermissionGuard";
+
 
 const ICONS = [
   "mdi:account",
@@ -229,6 +231,7 @@ export default function FormBuilderClient() {
   const fieldsInTab = fields.filter((f) => f.tab === activeTab);
 
   return (
+    <PermissionGuard permission="form.edit">
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
       {/* LEFT SIDEBAR */}
       <Card className="p-4 h-fit">
@@ -429,5 +432,6 @@ export default function FormBuilderClient() {
         />
       </Card>
     </div>
+    </PermissionGuard>
   );
 }

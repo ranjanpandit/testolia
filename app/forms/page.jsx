@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
+import { usePermissionStore } from "@/lib/permissionStore";
 
 export default function FormsList() {
   const [forms, setForms] = useState([]);
@@ -22,6 +23,7 @@ export default function FormsList() {
       setLoading(false);
     }
   };
+  const has = usePermissionStore((s) => s.has);
 
   useEffect(() => {
     loadForms();
@@ -52,10 +54,11 @@ export default function FormsList() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Forms</h1>
-
-        <Link href="/form-builder">
-          <Button>➕ Create New Form</Button>
-        </Link>
+        {has("form.create") && (
+          <Link href="/form-builder">
+            <Button>➕ Create New Form</Button>
+          </Link>
+        )}
       </div>
 
       {loading ? (
@@ -77,10 +80,12 @@ export default function FormsList() {
               </div>
 
               <div className="flex gap-3">
+                {has("form.edit") && (
                 <Link href={`/form-builder?id=${f.id}`}>
                   <Button variant="outline">✏ Edit</Button>
                 </Link>
-                <Link href={`/form-preview/${(f.id)}`}>
+                )}
+                <Link href={`/form-preview/${f.id}`}>
                   <Button>👀 Preview</Button>
                 </Link>
 
