@@ -68,14 +68,21 @@ export default function Header() {
         { name: "Fee Structures", href: "/fees/structures", permission: "fee.manage" },
       ],
     },
-
+    {
+      name: "Question Bank",
+      permission: "exam.manage",
+      children: [
+        { name: "Questions", href: "/question-bank", permission: "exam.manage" },
+      ],
+    },
     {
       name: "Examination",
       permission: "exam.manage",
       children: [
-        { name: "Exam", href: "/exams", permission: "exam.manage" },
+        { name: "Test", href: "/tests", permission: "exam.manage" },
+        { name: "Innstructions ", href: "/instructions", permission: "exam.manage" },
         { name: "Subject", href: "/subjects", permission: "subject.manage" },
-        { name: "Exam Patterns", href: "/exam-patterns", permission: "exam.manage" },
+        { name: "Result", href: "/admin/results", permission: "exam.manage" },
       ],
     },
 
