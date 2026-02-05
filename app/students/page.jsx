@@ -1,192 +1,423 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import Link from "next/link";
+import {
+  UserPlus,
+  Download,
+  Upload,
+  Search,
+  Eye,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  GraduationCap,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  UserPlus, FileDown, FileUp, Search, Eye, FilterX, 
-  ChevronLeft, ChevronRight, GraduationCap, ArrowUpDown, ArrowUp, ArrowDown 
-} from "lucide-react";
-import Link from "next/link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function StudentList() {
   const [data, setData] = useState({ data: [], classes: [], pages: 1, total: 0 });
   const [loading, setLoading] = useState(true);
-  
-  // 1. Expanded filters to include sorting
+
   const [filters, setFilters] = useState({
     search: "",
-    status: "",
+    status: "all",
     classId: "all",
     sortBy: "id",
     order: "DESC",
-    page: 1
+    page: 1,
+    limit: 10,
   });
+
+  const searchTimeout = useRef(null);
 
   const fetchStudents = useCallback(async () => {
     setLoading(true);
     const query = new URLSearchParams({
-      ...filters,
+      search: filters.search.trim(),
+      status: filters.status === "all" ? "" : filters.status,
+      classId: filters.classId === "all" ? "" : filters.classId,
+      sortBy: filters.sortBy,
+      order: filters.order,
       page: filters.page.toString(),
-      limit: "10"
+      limit: filters.limit.toString(),
     }).toString();
 
     try {
       const res = await fetch(`/api/students?${query}`);
+      if (!res.ok) throw new Error("Failed to load students");
       const json = await res.json();
       setData(json);
     } catch (err) {
-      console.error("Load error:", err);
+      console.error(err);
     } finally {
       setLoading(false);
     }
   }, [filters]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchStudents(), 300);
-    return () => clearTimeout(timer);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    searchTimeout.current = setTimeout(() => {
+      fetchStudents();
+    }, 350);
+
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    };
   }, [fetchStudents]);
 
   const updateFilter = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value, page: key === "page" ? value : 1 }));
-  };
-
-  // 2. Sorting Toggle Logic
-  const handleSort = (field) => {
-    const isAsc = filters.sortBy === field && filters.order === "ASC";
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
-      sortBy: field,
-      order: isAsc ? "DESC" : "ASC",
-      page: 1
+      [key]: value,
+      page: key === "page" ? value : 1,
     }));
   };
 
-  // 3. Icon Helper for Headers
-  const SortIcon = ({ field }) => {
-    if (filters.sortBy !== field) return <ArrowUpDown className="ml-2 h-3 w-3 opacity-30" />;
-    return filters.order === "ASC" 
-      ? <ArrowUp className="ml-2 h-3 w-3 text-teal-600" /> 
-      : <ArrowDown className="ml-2 h-3 w-3 text-teal-600" />;
+  const handleSort = (field) => {
+    setFilters((prev) => ({
+      ...prev,
+      sortBy: field,
+      order: prev.sortBy === field && prev.order === "ASC" ? "DESC" : "ASC",
+      page: 1,
+    }));
   };
-  // Inside your StudentList component
-const exportStudents = () => {
-  const query = new URLSearchParams({
-    search: filters.search,
-    status: filters.status,
-    classId: filters.classId
-  }).toString();
 
-  // Redirect to the export API with the active filters
-  window.location.href = `/api/students/export?${query}`;
-};
+  const resetFilters = () => {
+    setFilters({
+      search: "",
+      status: "all",
+      classId: "all",
+      sortBy: "id",
+      order: "DESC",
+      page: 1,
+      limit: 10,
+    });
+  };
+
+  const exportStudents = () => {
+    const query = new URLSearchParams({
+      search: filters.search.trim(),
+      status: filters.status === "all" ? "" : filters.status,
+      classId: filters.classId === "all" ? "" : filters.classId,
+      sortBy: filters.sortBy,
+      order: filters.order,
+    }).toString();
+
+    window.location.href = `/api/students/export?${query}`;
+  };
+
+  const SortIcon = ({ field }) => {
+    if (filters.sortBy !== field) return <ArrowUpDown className="ml-1.5 h-3.5 w-3.5 opacity-40" />;
+    return filters.order === "ASC" ? (
+      <ArrowUp className="ml-1.5 h-3.5 w-3.5 text-primary" />
+    ) : (
+      <ArrowDown className="ml-1.5 h-3.5 w-3.5 text-primary" />
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-10">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* HEADER AREA */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase italic flex items-center gap-3">
-              <GraduationCap className="w-8 h-8 text-teal-600" /> Candidate Registry
-            </h1>
-            <p className="text-slate-500 font-medium text-xs uppercase tracking-widest mt-1">
-              Active Records: <span className="text-teal-600 font-black">{data.total}</span>
-            </p>
-          </div>
+    <div className="min-h-screen bg-background pb-16">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-7 w-7 text-primary" />
+              <div>
+                <h1 className="text-xl font-semibold tracking-tight">Students</h1>
+                <p className="text-xs text-muted-foreground">
+                  Total: <span className="font-medium">{data.total.toLocaleString()}</span>
+                </p>
+              </div>
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Link href="/students/add"><Button className="bg-slate-900 text-white rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg"><UserPlus className="w-4 h-4 mr-2" /> Add Student</Button></Link>
-            <Link href="/students/import"><Button variant="outline" className="text-slate-600 font-bold uppercase text-[10px] tracking-widest rounded-xl"><FileDown className="w-4 h-4 mr-2" /> Import</Button></Link>
-            <Button variant="outline" onClick={exportStudents} className="text-slate-600 font-bold uppercase text-[10px] tracking-widest rounded-xl hover:bg-slate-50"><FileUp className="w-4 h-4 mr-2" /> Export</Button>
-          </div>
-        </div>
-
-        {/* FILTER BOX */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap gap-4 items-center">
-          <div className="relative flex-1 min-w-[280px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Search Name, Email, or Code..." className="pl-10 border-slate-100 bg-slate-50/50 rounded-xl focus:ring-teal-500" value={filters.search} onChange={(e) => updateFilter("search", e.target.value)} />
-          </div>
-          
-          <div className="flex flex-wrap gap-2">
-            <select className="border border-slate-100 bg-slate-50/50 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer" value={filters.classId} onChange={(e) => updateFilter("classId", e.target.value)}>
-              <option value="all">All Classes</option>
-              {data.classes?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-
-            <select className="border border-slate-100 bg-slate-50/50 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest outline-none focus:ring-2 focus:ring-teal-500" value={filters.status} onChange={(e) => updateFilter("status", e.target.value)}>
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="pending">Pending</option>
-              <option value="inactive">Inactive</option>
-            </select>
-
-            <Button variant="ghost" className="text-slate-300 hover:text-red-500" onClick={() => setFilters({ search: "", status: "", classId: "all", sortBy: "id", order: "DESC", page: 1 })}><FilterX className="w-5 h-5" /></Button>
-          </div>
-        </div>
-
-        {/* REGISTRY TABLE WITH SORTABLE HEADERS */}
-        <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-100">
-                  <th onClick={() => handleSort('first_name')} className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-teal-600 transition-colors">
-                    <div className="flex items-center">Identification <SortIcon field="first_name" /></div>
-                  </th>
-                  <th onClick={() => handleSort('email')} className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-teal-600 transition-colors">
-                    <div className="flex items-center">Contact <SortIcon field="email" /></div>
-                  </th>
-                  <th onClick={() => handleSort('class_name')} className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-teal-600 transition-colors">
-                    <div className="flex items-center">Class Level <SortIcon field="class_name" /></div>
-                  </th>
-                  <th onClick={() => handleSort('status')} className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] cursor-pointer hover:text-teal-600 transition-colors">
-                    <div className="flex items-center">Status <SortIcon field="status" /></div>
-                  </th>
-                  <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Options</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {loading ? (
-                  <tr><td colSpan="5" className="p-24 text-center font-bold text-slate-300 animate-pulse tracking-widest uppercase text-xs">Syncing Registry...</td></tr>
-                ) : (
-                  data.data.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="p-6">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-black text-sm uppercase">{s.first_name?.[0]}{s.last_name?.[0]}</div>
-                          <div>
-                            <p className="font-black text-slate-800 text-sm uppercase tracking-tight">{s.first_name} {s.last_name}</p>
-                            <p className="text-[10px] font-bold text-slate-400 font-mono tracking-tighter">{s.student_code}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-6">
-                        <p className="text-xs font-semibold text-slate-600">{s.email}</p>
-                        <p className="text-[10px] font-bold text-slate-400">{s.phone}</p>
-                      </td>
-                      <td className="p-6"><span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase italic border border-blue-100">{s.class_name || "Unassigned"}</span></td>
-                      <td className="p-6"><span className={`px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${s.status === 'active' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400'}`}>{s.status || "active"}</span></td>
-                      <td className="p-6 text-right"><Link href={`/students/${s.id}`}><Button variant="ghost" className="hover:bg-teal-50 hover:text-teal-600 rounded-xl font-black uppercase text-[10px] tracking-widest"><Eye className="w-4 h-4 mr-2" /> View Dossier</Button></Link></td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* PAGINATION */}
-          <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page {filters.page} of {data.pages}</p>
-            <div className="flex gap-3">
-              <Button variant="outline" disabled={filters.page === 1} onClick={() => updateFilter("page", filters.page - 1)} className="rounded-xl h-10 px-4 border-slate-200 bg-white text-xs font-black uppercase tracking-widest hover:bg-slate-50 disabled:opacity-30 transition"><ChevronLeft className="w-4 h-4 mr-2" /> Prev</Button>
-              <Button variant="outline" disabled={filters.page >= data.pages} onClick={() => updateFilter("page", filters.page + 1)} className="rounded-xl h-10 px-4 border-slate-200 bg-white text-xs font-black uppercase tracking-widest hover:bg-slate-50 disabled:opacity-30 transition">Next <ChevronRight className="w-4 h-4 ml-2" /></Button>
+            <div className="flex items-center gap-3">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/students/import">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportStudents}>
+                <Download className="mr-2 h-4 w-4" />
+                Export
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/students/add">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Add Student
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Filters */}
+        <Card className="mb-6 sticky top-16 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+          <CardContent className="pt-5 pb-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="flex-1 min-w-[240px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search name, email, code..."
+                    className="pl-9 h-10"
+                    value={filters.search}
+                    onChange={(e) => updateFilter("search", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Select
+                  value={filters.classId}
+                  onValueChange={(v) => updateFilter("classId", v)}
+                >
+                  <SelectTrigger className="w-[180px] h-10">
+                    <SelectValue placeholder="All Classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Classes</SelectItem>
+                    {data.classes?.map((c) => (
+                      <SelectItem key={c.id} value={c.id.toString()}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filters.status}
+                  onValueChange={(v) => updateFilter("status", v)}
+                >
+                  <SelectTrigger className="w-[160px] h-10">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filters.limit.toString()}
+                  onValueChange={(v) => updateFilter("limit", Number(v))}
+                >
+                  <SelectTrigger className="w-[100px] h-10">
+                    <SelectValue placeholder="Rows" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button variant="ghost" size="icon" onClick={resetFilters} title="Reset filters">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table Card */}
+        <Card className="border shadow-sm overflow-hidden">
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-6 space-y-4">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full" />
+                ))}
+              </div>
+            ) : data.data.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center text-muted-foreground">
+                <Search className="h-16 w-16 mb-6 opacity-30" />
+                <h3 className="text-xl font-medium mb-2">No students found</h3>
+                <p className="text-sm max-w-md">
+                  Try adjusting your filters or add a new student to get started.
+                </p>
+                <Button asChild className="mt-6 gap-2">
+                  <Link href="/students/add">
+                    <UserPlus className="h-4 w-4" />
+                    Add First Student
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40 hover:bg-muted/40">
+                        {[
+                          { label: "Student", field: "first_name" },
+                          { label: "Contact", field: "email" },
+                          { label: "Class", field: "class_name" },
+                          { label: "Status", field: "status" },
+                          { label: "Actions", sortable: false },
+                        ].map((col) => (
+                          <TableHead
+                            key={col.label}
+                            className={`cursor-pointer ${col.sortable !== false ? "hover:text-primary" : ""}`}
+                            onClick={() => col.field && handleSort(col.field)}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              {col.label}
+                              {col.field && <SortIcon field={col.field} />}
+                            </div>
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    </TableHeader>
+
+                    <TableBody>
+                      {data.data.map((student) => (
+                        <TableRow key={student.id} className="hover:bg-muted/50 transition-colors">
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-medium text-sm">
+                                {student.first_name?.[0]}
+                                {student.last_name?.[0]}
+                              </div>
+                              <div>
+                                <div className="font-medium leading-tight">
+                                  {student.first_name} {student.last_name}
+                                </div>
+                                <div className="text-xs text-muted-foreground font-mono">
+                                  {student.student_code}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="text-sm">
+                            <div>{student.email}</div>
+                            {student.phone && (
+                              <div className="text-xs text-muted-foreground">{student.phone}</div>
+                            )}
+                          </TableCell>
+
+                          <TableCell>
+                            <Badge variant="outline" className="font-normal">
+                              {student.class_name || "Unassigned"}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell>
+                            <Badge
+                              variant={
+                                student.status === "active"
+                                  ? "default"
+                                  : student.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {student.status?.charAt(0).toUpperCase() + student.status?.slice(1) || "Active"}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="sm" asChild>
+                              <Link href={`/students/${student.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Link>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Pagination */}
+                {data.pages > 1 && (
+                  <div className="flex items-center justify-between border-t px-6 py-4 bg-muted/20">
+                    <div className="text-sm text-muted-foreground hidden sm:block">
+                      Showing {data.data.length} of {data.total.toLocaleString()} students
+                    </div>
+
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="hidden sm:flex"
+                        disabled={filters.page === 1}
+                        onClick={() => updateFilter("page", 1)}
+                      >
+                        <ChevronsLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={filters.page === 1}
+                        onClick={() => updateFilter("page", filters.page - 1)}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+
+                      <span className="text-sm font-medium px-3 sm:px-4">
+                        {filters.page} / {data.pages}
+                      </span>
+
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={filters.page >= data.pages}
+                        onClick={() => updateFilter("page", filters.page + 1)}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="hidden sm:flex"
+                        disabled={filters.page >= data.pages}
+                        onClick={() => updateFilter("page", data.pages)}
+                      >
+                        <ChevronsRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }

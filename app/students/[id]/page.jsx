@@ -1,186 +1,431 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  User, CreditCard, FileText, Activity, 
-  ChevronLeft, Settings, Plus, History, ExternalLink 
+import { toast } from "sonner";
+import {
+  ChevronLeft,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  Users,
+  CreditCard,
+  FileText,
+  Plus,
+  History,
+  Edit3,
+  Check,
+  X,
+  ExternalLink,
+  AlertCircle,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
+
 export default function StudentProfile() {
+  const router = useRouter();
   const { id } = useParams();
-  const [data, setData] = useState({ student: null, docs: [], response: null, fee: null });
+  const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [data, setData] = useState({
+    student: null,
+    docs: [],
+    fee: null,
+  });
+
   const [form, setForm] = useState({});
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/students/${id}`);
-    const d = await res.json();
-    setData({ student: d.student, docs: d.documents || [], response: d.response, fee: d.fee });
-    setForm(d.student);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/students/${id}`);
+      if (!res.ok) throw new Error("Failed to load profile");
+      const json = await res.json();
+      setData({
+        student: json.student,
+        docs: json.documents || [],
+        fee: json.fee,
+      });
+      setForm(json.student || {});
+    } catch (err) {
+      toast.error("Failed to load student profile");
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleSave = async () => {
-    const res = await fetch(`/api/students/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      toast.success("Identity Records Updated");
+    if (!form.first_name || !form.email) {
+      toast.error("Name and email are required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/students/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      if (!res.ok) throw new Error("Save failed");
+
+      toast.success("Profile updated successfully");
       setEditMode(false);
       load();
+    } catch (err) {
+      toast.error("Failed to update profile");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (!data.student) return <div className="p-12 text-center animate-pulse font-black text-slate-300">ACCESSING REGISTRY...</div>;
+  const handleCancel = () => {
+    if (JSON.stringify(form) !== JSON.stringify(data.student)) {
+      if (!confirm("Discard changes?")) return;
+    }
+    setForm(data.student);
+    setEditMode(false);
+  };
 
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 lg:p-10 space-y-8">
-      {/* ENTERPRISE HEADER */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-6">
-          <div className="w-20 h-20 bg-indigo-600 text-white rounded-3xl flex items-center justify-center text-3xl font-black italic shadow-lg shadow-indigo-100">
-            {data.student.first_name[0]}{data.student.last_name?.[0]}
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 uppercase italic tracking-tighter">
-              {data.student.first_name} {data.student.last_name}
-            </h1>
-            <p className="text-slate-400 font-mono text-xs uppercase tracking-widest">{data.student.student_code}</p>
-          </div>
-        </div>
+  const handleBack = () => router.back();
 
-        <div className="flex flex-wrap gap-2">
-          {!editMode ? (
-            <>
-              <Link href="/students"><Button variant="outline" className="rounded-xl border-slate-200"><ChevronLeft className="w-4 h-4 mr-1" /> Back</Button></Link>
-              <Link href={`/students/${id}/assign-class`}><Button variant="outline" className="rounded-xl border-slate-200 text-indigo-600 font-bold uppercase text-[10px] tracking-widest"><Settings className="w-3 h-3 mr-2" /> Class Assignment</Button></Link>
-              <Button onClick={() => setEditMode(true)} className="bg-slate-900 rounded-xl px-8 uppercase font-bold text-xs tracking-widest transition-all hover:bg-black">Edit Dossier</Button>
-            </>
-          ) : (
-            <div className="flex gap-2">
-              <Button onClick={handleSave} className="bg-emerald-600 text-white rounded-xl uppercase font-bold text-xs tracking-widest">Commit Changes</Button>
-              <Button variant="ghost" onClick={() => setEditMode(false)} className="text-slate-400 font-bold">Discard</Button>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 space-y-8">
+          <Skeleton className="h-20 w-full" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-48 w-full" />
             </div>
-          )}
+            <div className="space-y-8">
+              <Skeleton className="h-64 w-full" />
+            </div>
+          </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* LEFT COLUMN: IDENTITY */}
-        <div className="lg:col-span-2 space-y-8">
-          <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-            <h2 className="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-[0.3em] mb-8 border-b border-slate-50 pb-4">
-              <User className="w-4 h-4" /> Identity Details
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+  if (!data.student) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Student not found</p>
+      </div>
+    );
+  }
+
+  const outstanding = (data.fee?.total_amount || 0) - (data.fee?.paid_amount || 0);
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={handleBack}>
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary text-xl font-bold">
+                  {data.student.first_name[0]}
+                  {data.student.last_name?.[0] || ""}
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold tracking-tight">
+                    {data.student.first_name} {data.student.last_name}
+                  </h1>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {data.student.student_code}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
               {!editMode ? (
                 <>
-                  <DataField label="Full Email" value={data.student.email} />
-                  <DataField label="Contact" value={data.student.phone} />
-                  <DataField label="Date of Birth" value={data.student.dob || "—"} />
-                  <DataField label="Gender" value={data.student.gender || "—"} />
-                  <DataField label="Assigned Class" value={data.student.class_name || "Unassigned"} highlighted />
+                  <Button variant="outline" asChild size="sm">
+                    <Link href={`/students/${id}/assign-class`}>
+                      <Users className="mr-2 h-4 w-4" />
+                      Assign Class
+                    </Link>
+                  </Button>
+                  <Button size="sm" onClick={() => setEditMode(true)}>
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    Edit Profile
+                  </Button>
                 </>
               ) : (
                 <>
-                  <Input value={form.first_name} onChange={e => setForm({...form, first_name: e.target.value})} placeholder="First Name" />
-                  <Input value={form.last_name} onChange={e => setForm({...form, last_name: e.target.value})} placeholder="Last Name" />
-                  <Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="Email" />
-                  <Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Phone" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={saving}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="gap-2"
+                  >
+                    {saving ? (
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    Save Changes
+                  </Button>
                 </>
               )}
             </div>
-          </section>
+          </div>
+        </div>
+      </header>
 
-          {/* DOCUMENTS */}
-          <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
-            <h2 className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-[0.3em] mb-6">
-              <FileText className="w-4 h-4" /> Certification & Docs
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {data.docs.length === 0 ? (
-                <p className="text-slate-300 text-xs font-bold uppercase">No records uploaded</p>
-              ) : (
-                data.docs.map(d => (
-                  <div key={d.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 group">
-                    <span className="text-xs font-bold text-slate-600 truncate max-w-[150px]">{d.original_name}</span>
-                    <a href={d.file_path} target="_blank" className="text-indigo-600 p-2 hover:bg-white rounded-lg transition-all"><ExternalLink className="w-4 h-4" /></a>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Identity Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Personal Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  {editMode ? (
+                    <>
+                      <div className="space-y-2">
+                        <Label>First Name</Label>
+                        <Input
+                          value={form.first_name || ""}
+                          onChange={(e) =>
+                            setForm({ ...form, first_name: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Last Name</Label>
+                        <Input
+                          value={form.last_name || ""}
+                          onChange={(e) =>
+                            setForm({ ...form, last_name: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input
+                          type="email"
+                          value={form.email || ""}
+                          onChange={(e) =>
+                            setForm({ ...form, email: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Phone</Label>
+                        <Input
+                          value={form.phone || ""}
+                          onChange={(e) =>
+                            setForm({ ...form, phone: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Date of Birth</Label>
+                        <Input
+                          type="date"
+                          value={form.dob || ""}
+                          onChange={(e) =>
+                            setForm({ ...form, dob: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Gender</Label>
+                        <Input
+                          value={form.gender || ""}
+                          onChange={(e) =>
+                            setForm({ ...form, gender: e.target.value })
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <InfoRow icon={<Mail className="h-4 w-4" />} label="Email" value={data.student.email} />
+                      <InfoRow icon={<Phone className="h-4 w-4" />} label="Phone" value={data.student.phone || "—"} />
+                      <InfoRow icon={<Calendar className="h-4 w-4" />} label="Date of Birth" value={data.student.dob || "—"} />
+                      <InfoRow icon={<User className="h-4 w-4" />} label="Gender" value={data.student.gender || "—"} />
+                      <div className="md:col-span-2">
+                        <InfoRow
+                          icon={<Users className="h-4 w-4" />}
+                          label="Class"
+                          value={
+                            <Badge variant="secondary">
+                              {data.student.class_name || "Unassigned"}
+                            </Badge>
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Documents */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {data.docs.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    No documents uploaded
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {data.docs.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between rounded-lg border bg-muted/30 p-4"
+                      >
+                        <span className="truncate text-sm font-medium">
+                          {doc.original_name}
+                        </span>
+                        <Button variant="ghost" size="icon" asChild>
+                          <a href={doc.file_path} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    ))}
                   </div>
-                ))
-              )}
-            </div>
-          </section>
-        </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* RIGHT COLUMN: FINANCIALS */}
-        <div className="space-y-8">
-          <section className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm relative overflow-hidden">
-            <div className={`absolute top-0 right-0 px-4 py-1 text-[8px] font-black uppercase tracking-widest ${data.fee?.status === 'paid' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'}`}>
-              {data.fee?.status || 'UNASSIGNED'}
-            </div>
-            <h2 className="flex items-center gap-2 text-xs font-black text-emerald-600 uppercase tracking-[0.3em] mb-8">
-              <CreditCard className="w-4 h-4" /> Financial Summary
-            </h2>
-            
-            {!data.fee ? (
-              <div className="text-center py-6">
-                <p className="text-red-500 text-[10px] font-black uppercase mb-4 tracking-widest">Financial profile missing</p>
-                <Link href={`/students/${id}/assign-fee`}><Button className="w-full bg-slate-900 rounded-xl font-bold uppercase text-[10px] tracking-widest shadow-lg">Initialize Fees</Button></Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <StatRow label="Total Value" value={`₹${data.fee.total_amount}`} />
-                <StatRow label="Received" value={`₹${data.fee.paid_amount}`} color="text-emerald-600" />
-                <div className="pt-4 border-t border-slate-100">
-                  <StatRow label="Outstanding" value={`₹${data.fee.total_amount - data.fee.paid_amount}`} color="text-red-600" />
+          {/* Right Column - Financial Summary */}
+          <div className="space-y-8">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="h-5 w-5" />
+                    Fee Status
+                  </CardTitle>
+                  {data.fee && (
+                    <Badge
+                      variant={data.fee.status === "paid" ? "default" : "secondary"}
+                    >
+                      {data.fee.status?.toUpperCase() || "PENDING"}
+                    </Badge>
+                  )}
                 </div>
-                <div className="flex gap-2 pt-6">
-                   <Link href={`/students/${id}/pay-fee`} className="flex-1"><Button className="w-full bg-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest"><Plus className="w-3 h-3 mr-1" /> Pay</Button></Link>
-                   <Link href={`/students/${id}/fee-history`}><Button variant="outline" className="rounded-xl p-2"><History className="w-4 h-4" /></Button></Link>
-                </div>
-              </div>
-            )}
-          </section>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {!data.fee ? (
+                  <div className="flex flex-col items-center gap-4 py-8 text-center">
+                    <AlertCircle className="h-10 w-10 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      No fee record assigned
+                    </p>
+                    <Button asChild className="w-full">
+                      <Link href={`/students/${id}/assign-fee`}>
+                        Assign Fee Structure
+                      </Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-4">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Total Amount</span>
+                        <span className="font-semibold">₹{data.fee.total_amount}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Paid</span>
+                        <span className="font-medium text-emerald-600">
+                          ₹{data.fee.paid_amount}
+                        </span>
+                      </div>
+                      <Separator />
+                      <div className="flex justify-between">
+                        <span className="text-sm font-medium">Outstanding</span>
+                        <span
+                          className={`font-bold ${
+                            outstanding > 0 ? "text-red-600" : "text-emerald-600"
+                          }`}
+                        >
+                          ₹{outstanding}
+                        </span>
+                      </div>
+                    </div>
 
-          {/* RAW JSON RESPONSE (OPTIONAL) */}
-          {data.response && (
-            <div className="bg-slate-900 p-6 rounded-[2.5rem] shadow-xl">
-               <p className="text-[10px] font-black text-teal-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                 <Activity className="w-3 h-3" /> System Meta Data
-               </p>
-               <pre className="text-[10px] text-slate-400 font-mono h-32 overflow-y-auto no-scrollbar italic leading-relaxed">
-                 {JSON.stringify(data.response.data, null, 2)}
-               </pre>
-            </div>
-          )}
+                    <div className="flex gap-3">
+                      <Button asChild className="flex-1">
+                        <Link href={`/students/${id}/pay-fee`}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Record Payment
+                        </Link>
+                      </Button>
+                      <Button variant="outline" asChild>
+                        <Link href={`/students/${id}/fee-history`}>
+                          <History className="h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
+      </main>
+    </div>
+  );
+}
+
+// Reusable info row
+function InfoRow({ icon, label, value }) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 text-muted-foreground text-xs">
+        {icon}
+        <span>{label}</span>
       </div>
-    </div>
-  );
-}
-
-function DataField({ label, value, highlighted }) {
-  return (
-    <div>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-      <p className={`font-bold text-sm ${highlighted ? 'text-indigo-600' : 'text-slate-800'}`}>{value}</p>
-    </div>
-  );
-}
-
-function StatRow({ label, value, color }) {
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-[10px] font-bold text-slate-400 uppercase">{label}</span>
-      <span className={`text-sm font-black ${color || 'text-slate-900'}`}>{value}</span>
+      <div className="text-sm font-medium">{value || "—"}</div>
     </div>
   );
 }

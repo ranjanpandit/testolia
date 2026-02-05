@@ -1,32 +1,67 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { User, BookOpen, Wallet, MapPin, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
+import {
+  ChevronLeft,
+  User,
+  Mail,
+  Phone,
+  Calendar,
+  MapPin,
+  BookOpen,
+  IndianRupee,
+  Loader2,
+  ArrowRight,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AddStudentPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [lookups, setLookups] = useState({ classes: [] });
+  const [lookupsLoading, setLookupsLoading] = useState(true);
+  const [classes, setClasses] = useState([]);
 
   const [form, setForm] = useState({
-    first_name: "", last_name: "", email: "", phone: "",
-    gender: "", dob: "", address: "", city: "",
-    state: "", country: "India",
-    class_id: "", batch_id: "", total_amount: ""
+    first_name: "",
+    last_name: "",
+    email: "",
+    phone: "",
+    gender: "",
+    dob: "",
+    address: "",
+    city: "",
+    state: "",
+    country: "India",
+    class_id: "",
+    total_amount: "",
   });
 
   useEffect(() => {
     async function loadLookups() {
+      setLookupsLoading(true);
       try {
-        const res = await fetch("/api/students?limit=1");
+        const res = await fetch("/api/students?limit=1"); // Assuming this returns classes in response
+        if (!res.ok) throw new Error("Failed to load lookups");
         const data = await res.json();
-        setLookups({ classes: data.classes || [] });
-      } catch (e) {
-        console.error("Lookup load failed");
+        setClasses(data.classes || []);
+      } catch (err) {
+        toast.error("Failed to load class list");
+      } finally {
+        setLookupsLoading(false);
       }
     }
     loadLookups();
@@ -36,11 +71,10 @@ export default function AddStudentPage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const save = async () => {
-    if (!form.first_name || !form.email || !form.class_id) {
-      toast.error("Please provide First Name, Email, and Class Level.");
-      return;
-    }
+  const handleSubmit = async () => {
+    if (!form.first_name.trim()) return toast.error("First name is required");
+    if (!form.email.trim()) return toast.error("Email is required");
+    if (!form.class_id) return toast.error("Please assign a class");
 
     setLoading(true);
     try {
@@ -50,94 +84,267 @@ export default function AddStudentPage() {
         body: JSON.stringify(form),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to create student");
+      }
 
-      toast.success("Student profile created successfully.");
-      router.push(`/students/${data.studentId}`);
+      const data = await res.json();
+      toast.success("Student profile created successfully");
+      router.push(`/students/${data.studentId || data.id}`);
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Registration failed");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 lg:p-10 text-slate-900">
-      <div className="max-w-5xl mx-auto">
-        <header className="mb-10">
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">New Student Registration</h1>
-          <p className="text-slate-500 mt-1">Complete the form below to create a new student record and assign academic details.</p>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Form Area */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Personal Details */}
-            <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-indigo-600 uppercase tracking-wider mb-6">
-                <User className="w-4 h-4" /> Personal Information
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <Input placeholder="First Name *" value={form.first_name} onChange={(e) => handleChange("first_name", e.target.value)} />
-                <Input placeholder="Last Name" value={form.last_name} onChange={(e) => handleChange("last_name", e.target.value)} />
-                <Input placeholder="Email Address *" type="email" value={form.email} onChange={(e) => handleChange("email", e.target.value)} />
-                <Input placeholder="Phone Number" value={form.phone} onChange={(e) => handleChange("phone", e.target.value)} />
-                <select className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={form.gender} onChange={(e) => handleChange("gender", e.target.value)}>
-                  <option value="">Select Gender</option>
-                  <option>Male</option>
-                  <option>Female</option>
-                  <option>Other</option>
-                </select>
-                <Input type="date" value={form.dob} onChange={(e) => handleChange("dob", e.target.value)} />
-              </div>
-            </section>
-
-            {/* Academic & Location */}
-            <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-indigo-600 uppercase tracking-wider mb-6">
-                <BookOpen className="w-4 h-4" /> Academic & Location
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <select className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" value={form.class_id} onChange={(e) => handleChange("class_id", e.target.value)}>
-                  <option value="">Assign Class *</option>
-                  {lookups.classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-                <Input placeholder="City" value={form.city} onChange={(e) => handleChange("city", e.target.value)} />
-                <div className="md:col-span-2">
-                  <Input placeholder="Full Address" value={form.address} onChange={(e) => handleChange("address", e.target.value)} />
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* Sidebar / Secondary Details */}
-          <div className="space-y-6">
-            <section className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-indigo-600 uppercase tracking-wider mb-6">
-                <Wallet className="w-4 h-4" /> Billing Setup
-              </h2>
-              <div className="space-y-4">
-                <p className="text-xs text-slate-500">Define the initial fee structure for this student.</p>
-                <Input placeholder="Total Course Fee (INR)" type="number" value={form.total_amount} onChange={(e) => handleChange("total_amount", e.target.value)} />
-              </div>
-            </section>
-
-            <div className="p-2">
-              <Button 
-                disabled={loading} 
-                className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 transition-all flex items-center justify-center gap-2"
-                onClick={save}
-              >
-                {loading ? "Registering..." : "Create Student Profile"}
-                {!loading && <ArrowRight className="w-4 h-4" />}
+    <div className="min-h-screen bg-background">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                <ChevronLeft className="h-5 w-5" />
               </Button>
-              <p className="text-[10px] text-center text-slate-400 mt-4 uppercase tracking-widest font-bold">Fields marked with * are required</p>
+              <h1 className="text-xl font-semibold tracking-tight">
+                Add New Student
+              </h1>
             </div>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="gap-2"
+            >
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+              Create Student
+              {!loading && <ArrowRight className="h-4 w-4" />}
+            </Button>
           </div>
         </div>
-      </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          {/* Left Column – Main Form */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Personal Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5 text-muted-foreground" />
+                  Personal Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name *</Label>
+                    <Input
+                      id="first_name"
+                      placeholder="Enter first name"
+                      value={form.first_name}
+                      onChange={(e) => handleChange("first_name", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name</Label>
+                    <Input
+                      id="last_name"
+                      placeholder="Enter last name"
+                      value={form.last_name}
+                      onChange={(e) => handleChange("last_name", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="student@example.com"
+                      value={form.email}
+                      onChange={(e) => handleChange("email", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={form.phone}
+                      onChange={(e) => handleChange("phone", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select value={form.gender} onValueChange={(v) => handleChange("gender", v)}>
+                      <SelectTrigger id="gender">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dob">Date of Birth</Label>
+                    <Input
+                      id="dob"
+                      type="date"
+                      value={form.dob}
+                      onChange={(e) => handleChange("dob", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Academic & Address */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-muted-foreground" />
+                  Academic & Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="class_id">Class Level *</Label>
+                    {lookupsLoading ? (
+                      <Skeleton className="h-10 w-full" />
+                    ) : (
+                      <Select
+                        value={form.class_id}
+                        onValueChange={(v) => handleChange("class_id", v)}
+                      >
+                        <SelectTrigger id="class_id">
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classes.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              No classes available
+                            </SelectItem>
+                          ) : (
+                            classes.map((c) => (
+                              <SelectItem key={c.id} value={c.id.toString()}>
+                                {c.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="address">Full Address</Label>
+                    <Input
+                      id="address"
+                      placeholder="House no, Street, Area"
+                      value={form.address}
+                      onChange={(e) => handleChange("address", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      placeholder="e.g. Delhi"
+                      value={form.city}
+                      onChange={(e) => handleChange("city", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      placeholder="e.g. Delhi"
+                      value={form.state}
+                      onChange={(e) => handleChange("state", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column – Billing & Actions */}
+          <div className="space-y-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <IndianRupee className="h-5 w-5 text-muted-foreground" />
+                  Billing Setup
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="total_amount">Total Course Fee (₹)</Label>
+                  <div className="relative">
+                    <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      id="total_amount"
+                      type="number"
+                      placeholder="0.00"
+                      value={form.total_amount}
+                      onChange={(e) => handleChange("total_amount", e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  This will be the initial fee assigned to the student. You can adjust later.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Actions Card */}
+            <Card className="bg-muted/30 border-dashed">
+              <CardContent className="pt-6 space-y-4">
+                <div className="flex flex-col gap-3">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="h-12 gap-2 text-base"
+                  >
+                    {loading && <Loader2 className="h-5 w-5 animate-spin" />}
+                    Create Student Profile
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={() => router.back()}
+                    disabled={loading}
+                    className="h-12"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+
+                <p className="text-xs text-center text-muted-foreground pt-2">
+                  Fields marked with * are required
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

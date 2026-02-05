@@ -8,8 +8,10 @@ import {
   Save,
   X,
   Layers,
+  ChevronLeft
 } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function SectionManager({ examId }) {
   const [sections, setSections] = useState([]);
@@ -17,6 +19,7 @@ export default function SectionManager({ examId }) {
   const [saving, setSaving] = useState(false);
 
   const [editingId, setEditingId] = useState(null);
+  const router = useRouter();
 
   const emptyForm = {
     section_name: "",
@@ -151,8 +154,14 @@ export default function SectionManager({ examId }) {
 
       {/* ================= ADD / EDIT FORM ================= */}
       <div className="rounded-2xl border bg-white shadow-sm p-6">
+        
         <div className="flex items-center gap-2 mb-4">
-          <Layers className="w-4 h-4 text-indigo-600" />
+          <button
+            onClick={() => router.back()}
+            className="p-3 rounded-xl border bg-slate-50 hover:bg-slate-100 transition"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
           <h2 className="text-sm font-black uppercase tracking-widest text-slate-700">
             {editingId ? "Edit Section" : "Create Section"}
           </h2>

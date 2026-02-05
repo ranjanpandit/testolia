@@ -1,259 +1,326 @@
 "use client";
 
-import { Search, Bell, Moon, Sun, User, LogOut, Menu } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { usePathname } from "next/navigation";
+import Link from "next/link";
+import {
+  Search,
+  Bell,
+  Moon,
+  Sun,
+  User,
+  LogOut,
+  Menu,
+  ChevronDown,
+  LayoutDashboard,
+  GraduationCap,
+  X,
+} from "lucide-react";
+
 import { useStore } from "@/lib/store";
 import { usePermissionStore } from "@/lib/permissionStore";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 export default function Header() {
-  const { darkMode, toggleTheme, logout } = useStore();
-  const { has, loaded } = usePermissionStore();
-
-  const [openProfile, setOpenProfile] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [openMenu, setOpenMenu] = useState(null);
-
   const pathname = usePathname();
 
-  /* ----------------------------------------
-     CLOSE ALL MENUS
-  ---------------------------------------- */
-  const closeMenus = () => {
-    setOpenMenu(null);
-    setMobileMenuOpen(false);
-    setOpenProfile(false);
-  };
+  const { darkMode, toggleTheme, logout, user } = useStore();
+  const { has, loaded } = usePermissionStore();
 
-  /* ----------------------------------------
-     CLOSE MENUS ON ROUTE CHANGE
-  ---------------------------------------- */
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState(null);
+
+  const profileRef = useRef(null);
+  const mobileRef = useRef(null);
+
   useEffect(() => {
-    closeMenus();
+    setMobileOpen(false);
+    setProfileOpen(false);
+    setActiveDropdown(null);
   }, [pathname]);
 
-  if (!loaded) return null; // ⛔ wait till permissions loaded
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+      if (mobileRef.current && !mobileRef.current.contains(e.target)) {
+        setMobileOpen(false);
+      }
+    };
 
-  /* ----------------------------------------
-     MENU CONFIG
-  ---------------------------------------- */
-  const menuLinks = [
-    { name: "Dashboard", href: "/", permission: "dashboard.view" },
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
+  if (!loaded) return null;
+
+  const menuItems = [
     {
-      name: "Form Manager",
-      permission: "form.view",
-      children: [
-        { name: "Forms", href: "/forms", permission: "form.view" },
-        { name: "Forms Responses", href: "/form-responses", permission: "form.view" },
-      ],
+      name: "Dashboard",
+      href: "/",
+      icon: LayoutDashboard,
+      permission: "dashboard.view",
     },
-
     {
       name: "Students",
+      icon: User,
       permission: "student.view",
       children: [
-        { name: "Student Management", href: "/students", permission: "student.manage" },
-        { name: "Class Management", href: "/classes", permission: "class.manage" },
-        { name: "Batch Management", href: "/batches", permission: "batch.manage" },
+        { name: "All Students", href: "/students", permission: "student.manage" },
+        { name: "Add Student", href: "/students/add", permission: "student.manage" },
+        { name: "Classes", href: "/classes", permission: "class.manage" },
+        { name: "Batches", href: "/batches", permission: "batch.manage" },
       ],
     },
-
     {
-      name: "Fee Manager",
+      name: "Exams",
+      permission: "exam.manage",
+      children: [
+        { name: "Tests", href: "/tests", permission: "exam.manage" },
+        { name: "Question Bank", href: "/question-bank", permission: "exam.manage" },
+        { name: "Results", href: "/admin/results", permission: "exam.manage" },
+      ],
+    },
+    {
+      name: "Fees",
       permission: "fee.manage",
       children: [
-        { name: "Fee Structures", href: "/fees/structures", permission: "fee.manage" },
+        { name: "Structures", href: "/fees/structures", permission: "fee.manage" },
       ],
     },
-    {
-      name: "Question Bank",
-      permission: "exam.manage",
-      children: [
-        { name: "Questions", href: "/question-bank", permission: "exam.manage" },
-      ],
-    },
-    {
-      name: "Examination",
-      permission: "exam.manage",
-      children: [
-        { name: "Test", href: "/tests", permission: "exam.manage" },
-        { name: "Innstructions ", href: "/instructions", permission: "exam.manage" },
-        { name: "Subject", href: "/subjects", permission: "subject.manage" },
-        { name: "Result", href: "/admin/results", permission: "exam.manage" },
-      ],
-    },
-
     {
       name: "Admin",
       permission: "user.manage",
       children: [
         { name: "Users", href: "/admin/users", permission: "user.manage" },
-        { name: "Roles & Permissions", href: "/admin/roles", permission: "role.manage" },
+        { name: "Roles", href: "/admin/roles", permission: "role.manage" },
       ],
     },
   ];
 
-  /* ----------------------------------------
-     FILTER BY PERMISSIONS
-  ---------------------------------------- */
-  const visibleMenus = menuLinks
-    .filter(menu => !menu.permission || has(menu.permission))
-    .map(menu => ({
-      ...menu,
-      children: menu.children
-        ? menu.children.filter(
-            child => !child.permission || has(child.permission)
-          )
-        : undefined,
+  const visibleMenus = menuItems
+    .filter((item) => !item.permission || has(item.permission))
+    .map((item) => ({
+      ...item,
+      children: item.children?.filter(
+        (child) => !child.permission || has(child.permission)
+      ),
     }))
-    .filter(menu => !menu.children || menu.children.length > 0);
+    .filter((item) => !item.children || item.children.length > 0);
 
-  /* ----------------------------------------
-     UI
-  ---------------------------------------- */
   return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b p-3 flex justify-between items-center shadow-sm">
-      {/* MOBILE MENU */}
-      <div className="md:hidden">
-        <button
-          className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-        >
-          <Menu />
-        </button>
+    <>
+      {/* Header – high z-index */}
+      <header className="sticky top-0 z-[1000] border-b bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80 shadow-sm">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          {/* Left – Logo + Mobile Toggle */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle navigation menu"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
 
-        {mobileMenuOpen && (
-          <div className="absolute left-0 mt-2 w-56 bg-white dark:bg-gray-800 shadow-lg rounded-md border p-2 z-30">
-            {visibleMenus.map((link, idx) => (
-              <div key={idx}>
-                {!link.children ? (
-                  <Link
-                    href={link.href}
-                    onClick={closeMenus}
-                    className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                  >
-                    {link.name}
-                  </Link>
-                ) : (
-                  <>
-                    <p className="px-3 py-2 font-semibold">{link.name}</p>
-                    {link.children.map(child => (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        onClick={closeMenus}
-                        className="block pl-6 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                      >
-                        {child.name}
-                      </Link>
-                    ))}
-                  </>
-                )}
-              </div>
-            ))}
+            <Link href="/" className="flex items-center gap-2 font-bold tracking-tight">
+              <GraduationCap className="h-6 w-6 text-primary" />
+              <span className="hidden sm:inline">Testollia</span>
+            </Link>
           </div>
-        )}
-      </div>
 
-      {/* DESKTOP MENU */}
-      <nav className="hidden md:flex gap-6 text-sm font-medium">
-        {visibleMenus.map((link, index) =>
-          link.children ? (
-            <div key={index} className="relative">
-              <button
-                onClick={() => setOpenMenu(openMenu === index ? null : index)}
-                className="hover:text-blue-600"
-              >
-                {link.name} ▾
-              </button>
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+            {visibleMenus.map((item, idx) => {
+              const isOpen = activeDropdown === idx;
 
-              {openMenu === index && (
-                <div className="absolute left-0 mt-2 w-52 bg-white dark:bg-gray-800 shadow rounded border p-2">
-                  {link.children.map(child => (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      onClick={closeMenus}
-                      className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              if (item.children) {
+                return (
+                  <div key={idx} className="relative">
+                    <Button
+                      variant="ghost"
+                      className={cn(isOpen && "bg-accent")}
+                      onClick={() =>
+                        setActiveDropdown(isOpen ? null : idx)
+                      }
                     >
-                      {child.name}
-                    </Link>
-                  ))}
+                      {item.name}
+                      <ChevronDown
+                        className={cn(
+                          "ml-1 h-4 w-4 transition-transform",
+                          isOpen && "rotate-180"
+                        )}
+                      />
+                    </Button>
+
+                    {isOpen && (
+                      /* Dropdown – very high z-index, fixed positioning fallback */
+                      <div className="fixed md:absolute left-0 md:left-auto top-[3.5rem] md:top-full z-[9999] mt-1 w-56 rounded-md border bg-popover shadow-2xl animate-in fade-in-0 zoom-in-95">
+                        {item.children.map((child) => (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            onClick={() => setActiveDropdown(null)}
+                            className={cn(
+                              "block px-4 py-2 text-sm hover:bg-accent",
+                              pathname === child.href && "bg-accent"
+                            )}
+                          >
+                            {child.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              return (
+                <Link
+                  key={idx}
+                  href={item.href}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm hover:bg-accent",
+                    pathname === item.href && "bg-accent"
+                  )}
+                >
+                  {item.name}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right Section */}
+          <div className="flex items-center gap-2">
+            {/* Search */}
+            <div className="hidden md:flex items-center rounded-full bg-muted px-3">
+              <Search className="mr-2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search"
+                className="border-0 bg-transparent focus-visible:ring-0"
+              />
+            </div>
+
+            {/* Notifications */}
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 text-[10px]">
+                3
+              </Badge>
+            </Button>
+
+            {/* Theme Toggle */}
+            <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              {darkMode ? <Sun /> : <Moon />}
+            </Button>
+
+            {/* Profile */}
+            <div ref={profileRef} className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setProfileOpen(!profileOpen)}
+              >
+                <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                  {user?.name?.[0]?.toUpperCase() || "U"}
+                </div>
+              </Button>
+
+              {profileOpen && (
+                <div className="fixed md:absolute right-4 md:right-0 top-[3.5rem] md:top-full z-[9999] mt-1 w-56 rounded-md border bg-popover shadow-2xl animate-in fade-in-0 zoom-in-95">
+                  <div className="border-b px-4 py-2">
+                    <p className="font-medium">{user?.name || "User"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.email || "admin@example.com"}
+                    </p>
+                  </div>
+
+                  <Link
+                    href="/profile"
+                    className="block px-4 py-2 text-sm hover:bg-accent"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Profile
+                  </Link>
+
+                  <button
+                    onClick={() => {
+                      logout();
+                      setProfileOpen(false);
+                    }}
+                    className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                  </button>
                 </div>
               )}
             </div>
-          ) : (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={closeMenus}
-              className="hover:text-blue-600"
-            >
-              {link.name}
-            </Link>
-          )
-        )}
-      </nav>
-
-      {/* SEARCH */}
-      <div className="hidden md:flex items-center bg-gray-100 dark:bg-gray-700 px-3 rounded-lg w-80">
-        <Search size={18} className="opacity-60" />
-        <Input
-          type="text"
-          placeholder="Search..."
-          className="border-0 shadow-none bg-transparent focus-visible:ring-0"
-        />
-      </div>
-
-      {/* RIGHT SECTION */}
-      <div className="flex items-center gap-5">
-        <button className="relative hover:text-blue-500 transition">
-          <Bell size={20} />
-        </button>
-
-        <button onClick={toggleTheme} className="hover:text-blue-500 transition">
-          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-
-        <div className="relative">
-          <button
-            onClick={() => setOpenProfile(!openProfile)}
-            className="flex items-center gap-2"
-          >
-            <div className="w-9 h-9 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-              <User size={18} />
-            </div>
-          </button>
-
-          {openProfile && (
-            <div className="absolute right-0 mt-3 w-40 bg-white dark:bg-gray-700 shadow-md rounded-lg border p-2">
-              <Link
-                href="/profile"
-                onClick={closeMenus}
-                className="block px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/settings"
-                onClick={closeMenus}
-                className="block px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md"
-              >
-                Settings
-              </Link>
-              <button
-                onClick={logout}
-                className="flex items-center gap-2 w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-md"
-              >
-                <LogOut size={16} /> Logout
-              </button>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      {/* Mobile Menu – full screen with high z-index */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-[9999] bg-black/60 md:hidden backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        >
+          <div
+            ref={mobileRef}
+            className="fixed inset-y-0 left-0 w-72 bg-background shadow-2xl transform transition-transform duration-300 ease-in-out translate-x-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b px-4 h-14">
+              <span className="font-semibold">EduAdmin</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setMobileOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            <div className="py-4 px-2 overflow-y-auto h-[calc(100vh-4rem)]">
+              {visibleMenus.map((item, idx) => (
+                <div key={idx}>
+                  {!item.children ? (
+                    <Link
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      className="block px-4 py-3 rounded-lg hover:bg-accent text-sm font-medium"
+                    >
+                      {item.name}
+                    </Link>
+                  ) : (
+                    <>
+                      <p className="px-4 py-2 font-semibold">{item.name}</p>
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="block pl-8 py-2 rounded-lg hover:bg-accent text-sm"
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
