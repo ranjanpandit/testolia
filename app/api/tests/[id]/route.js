@@ -1,8 +1,6 @@
 import { db } from "@/lib/db";
+import { normalizeExamTheme } from "@/lib/exam-theme";
 
-/* =========================
-   GET TEST
-========================= */
 export async function GET(req, { params }) {
   const { id } = await params;
 
@@ -11,9 +9,6 @@ export async function GET(req, { params }) {
   return Response.json(rows[0] || null);
 }
 
-/* =========================
-   UPDATE TEST
-========================= */
 export async function PUT(req, { params }) {
   const data = await req.json();
   const { id } = await params;
@@ -27,7 +22,8 @@ export async function PUT(req, { params }) {
       total_marks = ?,
       start_time = ?,
       end_time = ?,
-      status = ?
+      status = ?,
+      exam_theme = ?
      WHERE id = ?`,
     [
       data.title,
@@ -38,6 +34,7 @@ export async function PUT(req, { params }) {
       data.start_time || null,
       data.end_time || null,
       data.status,
+      normalizeExamTheme(data.exam_theme),
       id,
     ],
   );
@@ -45,13 +42,9 @@ export async function PUT(req, { params }) {
   return Response.json({ success: true });
 }
 
-/* =========================
-   DELETE TEST
-========================= */
 export async function DELETE(req, { params }) {
   const { id } = await params;
 
-  // Optional safety: prevent deleting published tests
   const [[test]] = await db.query(`SELECT status FROM exams WHERE id = ?`, [
     id,
   ]);
@@ -77,7 +70,6 @@ export async function PATCH(req, { params }) {
     const { id } = await params;
     const { status } = await req.json();
 
-    // 1. Basic Validation
     const validStatuses = ["draft", "published", "archived"];
     if (!validStatuses.includes(status)) {
       return Response.json(
@@ -86,13 +78,13 @@ export async function PATCH(req, { params }) {
       );
     }
 
-    // 2. Business Logic Validation (Publishing Integrity)
     if (status === "published") {
       const [validationRows] = await db.query(
         ` select e.total_questions,section_id,count(esq.question_id) as mapped_question from
-         exams e LEFT JOIN exam_pattern_sections eps on e.id=eps.exam_pattern_id
-          LEFT JOIN exam_section_questions esq ON eps.id=esq.section_id
-           where e.id= ? group by section_id`,
+         exams e LEFT JOIN exam_patterns epsp on e.id = epsp.exam_id
+         LEFT JOIN exam_pattern_sections eps on epsp.id = eps.exam_pattern_id
+         LEFT JOIN exam_section_questions esq ON eps.id = esq.section_id
+         where e.id = ? group by section_id`,
         [id],
       );
       const audit = validationRows[0];
@@ -108,10 +100,9 @@ export async function PATCH(req, { params }) {
         );
       }
 
-      const required  = Number(audit.total_questions || 0);
+      const required = Number(audit.total_questions || 0);
       const actual = Number(totalMappedQuestions || 0);
-//console.log({required,actual,validationRows})
-      // Prevent publishing if the blueprint is incomplete
+
       if (actual < required || required === 0) {
         return Response.json(
           {
@@ -122,7 +113,6 @@ export async function PATCH(req, { params }) {
       }
     }
 
-    // 3. Update Registry
     await db.query(`UPDATE exams SET status = ? WHERE id = ?`, [status, id]);
 
     return Response.json({

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -14,8 +14,10 @@ import {
   CalendarDays,
   History,
   AlertTriangle,
+  Palette,
 } from "lucide-react";
 
+import { EXAM_THEME_OPTIONS } from "@/lib/exam-theme";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +31,6 @@ export default function EditTest({ examId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load data
   useEffect(() => {
     async function loadTest() {
       try {
@@ -51,6 +52,7 @@ export default function EditTest({ examId }) {
           total_questions: Number(data.total_questions) || "",
           total_marks: Number(data.total_marks) || "",
           status: data.status || "draft",
+          exam_theme: data.exam_theme || "standard",
         };
 
         setForm(normalized);
@@ -81,7 +83,6 @@ export default function EditTest({ examId }) {
   const save = async () => {
     if (!form) return;
 
-    // Basic client-side validation
     if (!form.title.trim()) {
       toast.error("Test title is required");
       return;
@@ -139,7 +140,6 @@ export default function EditTest({ examId }) {
 
   return (
     <div className="min-h-screen bg-slate-50/70 pb-16">
-      {/* Sticky Header */}
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -148,24 +148,16 @@ export default function EditTest({ examId }) {
                 <ChevronLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-xl font-semibold tracking-tight">
-                  Edit Test
-                </h1>
+                <h1 className="text-xl font-semibold tracking-tight">Edit Test</h1>
                 <p className="text-sm text-muted-foreground">
-                  ID: {examId} • {form.status === "published" ? "Live" : "Draft"}
+                  ID: {examId} | {form.status === "published" ? "Live" : "Draft"}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={handleCancel}>
-                Cancel
-              </Button>
-              <Button
-                onClick={save}
-                disabled={saving || !hasChanges}
-                className="gap-2"
-              >
+              <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+              <Button onClick={save} disabled={saving || !hasChanges} className="gap-2">
                 {saving && <Loader2 className="h-4 w-4 animate-spin" />}
                 <Save className="h-4 w-4" />
                 Save Changes
@@ -177,7 +169,6 @@ export default function EditTest({ examId }) {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          {/* Left column – Main content */}
           <div className="lg:col-span-8 space-y-8">
             <Card>
               <CardHeader>
@@ -243,7 +234,6 @@ export default function EditTest({ examId }) {
             </Card>
           </div>
 
-          {/* Right column – Sidebar */}
           <div className="lg:col-span-4 space-y-8">
             <Card>
               <CardHeader>
@@ -253,6 +243,24 @@ export default function EditTest({ examId }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    Exam Theme
+                  </Label>
+                  <select
+                    value={form.exam_theme}
+                    onChange={(e) => update("exam_theme", e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {EXAM_THEME_OPTIONS.map((theme) => (
+                      <option key={theme.value} value={theme.value}>
+                        {theme.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <NumericField
                   icon={<Timer className="h-4 w-4" />}
                   label="Duration"
@@ -298,13 +306,9 @@ export default function EditTest({ examId }) {
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5" />
                   <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-amber-800">
-                      Important Notice
-                    </h3>
+                    <h3 className="text-sm font-medium text-amber-800">Important Notice</h3>
                     <p className="text-sm text-amber-700 leading-relaxed">
-                      Changing settings of a live exam may interrupt students
-                      currently taking the test. Consider pausing live sessions
-                      first if necessary.
+                      Changing settings of a live exam may interrupt students currently taking the test. Consider pausing live sessions first if necessary.
                     </p>
                   </div>
                 </div>
@@ -317,7 +321,6 @@ export default function EditTest({ examId }) {
   );
 }
 
-// Reusable number input component
 function NumericField({ icon, label, unit, value, onChange }) {
   return (
     <div className="space-y-1.5">

@@ -1,9 +1,10 @@
 import { db } from "@/lib/db";
+import { normalizeExamTheme } from "@/lib/exam-theme";
 
 export async function GET() {
   try {
     const [rows] = await db.query(
-      `SELECT id, title, duration_minutes, status, start_time, end_time
+      `SELECT id, title, duration_minutes, status, exam_theme, start_time, end_time
        FROM exams
        ORDER BY id DESC`
     );
@@ -31,6 +32,7 @@ export async function POST(req) {
       start_time,
       end_time,
       status,
+      exam_theme,
     } = data;
 
     if (!title || !duration_minutes) {
@@ -42,8 +44,8 @@ export async function POST(req) {
 
     const [result] = await db.query(
       `INSERT INTO exams
-       (title, description, duration_minutes,total_questions,total_marks, start_time, end_time, status)
-       VALUES (?, ?, ?, ?, ?, ?,?,?)`,
+       (title, description, duration_minutes, total_questions, total_marks, start_time, end_time, status, exam_theme)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         title,
         description || null,
@@ -53,6 +55,7 @@ export async function POST(req) {
         start_time || null,
         end_time || null,
         status || "draft",
+        normalizeExamTheme(exam_theme),
       ]
     );
 
