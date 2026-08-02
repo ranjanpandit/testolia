@@ -9,6 +9,7 @@ import {
   Moon,
   Sun,
   User,
+  Globe2,
   LogOut,
   Menu,
   ChevronDown,
@@ -67,6 +68,16 @@ export default function Header() {
       permission: "dashboard.view",
     },
     {
+      name: "Forms",
+      icon: User,
+      permission: "form.view",
+      children: [
+        { name: "All Forms", href: "/forms", permission: "form.view" },
+        { name: "Add Form", href: "/form-builder", permission: "form.create" },
+        
+      ],
+    },
+    {
       name: "Students",
       icon: User,
       permission: "student.view",
@@ -91,6 +102,18 @@ export default function Header() {
       permission: "fee.manage",
       children: [
         { name: "Structures", href: "/fees/structures", permission: "fee.manage" },
+      ],
+    },
+    {
+      name: "Website",
+      icon: Globe2,
+      permission: "user.manage",
+      children: [
+        { name: "Website Settings", href: "/website/settings", permission: "user.manage" },
+        { name: "Sections", href: "/website/sections", permission: "user.manage" },
+        { name: "Banners", href: "/website/banners", permission: "user.manage" },
+        { name: "Notification Centre", href: "/website/notifications", permission: "user.manage" },
+        { name: "Important Links", href: "/website/important-links", permission: "user.manage" },
       ],
     },
     {

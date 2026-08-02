@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-export default function SortableItem({ field, onDelete }) {
+export default function SortableItem({ field, onDelete, onRename }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: field.id });
 
@@ -20,9 +20,17 @@ export default function SortableItem({ field, onDelete }) {
         <GripVertical />
       </div>
 
-      <Input className="flex-1" defaultValue={field.label} />
+      <Input
+        className="flex-1"
+        value={field.label}
+        onChange={(e) => onRename?.(e.target.value)}
+      />
 
-      <button className="text-red-500 hover:text-red-700" onClick={() => onDelete(field.id)}>
+      <button
+        type="button"
+        className="text-red-500 hover:text-red-700"
+        onClick={() => onDelete(field.id)}
+      >
         <Trash />
       </button>
     </div>

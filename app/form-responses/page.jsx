@@ -5,13 +5,16 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useSearchParams } from "next/navigation";
 
 export default function FormResponsesList() {
+  const searchParams = useSearchParams();
+  const initialFormId = searchParams.get("formId") || "";
   const [responses, setResponses] = useState([]);
   const [filtered, setFiltered] = useState([]);
 
   const [search, setSearch] = useState("");
-  const [filterFormId, setFilterFormId] = useState("");
+  const [filterFormId, setFilterFormId] = useState(initialFormId);
   const [filterStudentId, setFilterStudentId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
 
